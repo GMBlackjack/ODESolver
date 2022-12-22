@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 #include <time.h> //we like to know how long things take. 
 //having not used time.h before we refered to
 //https://en.wikibooks.org/wiki/C_Programming/time.h
@@ -47,70 +48,109 @@ int main()
     //and set, as well as the function itself chosen. 
     //The diffyQ itself can be found declared in diffyQEval().
     double step = 0.001; //the "step" value. 
-    int bound = 0; //where the boundary/initial condition is.
+    double bound = 0; //where the boundary/initial condition is.
     //Functionality will have to be altered for non-integer boundaries.
     double bValue = 1; //the value at y(bound). 
     //by default we say y(0) = 1. 
-    const int SIZE = 200000; //Size of the various arrays. 
-    
-    double y[SIZE];
-    double yTruth[SIZE];
-    double yError[SIZE];
-    //These two arrays store funciton values. 
-    //y is waht we solve for, yTruth is the "known results."
-    //yError is the error of y when compared to yTruth
-    //Make sure to set them to the same size. Default is 100 steps
-    //Feel free to make large. 
+    const int SIZE = 1000; //How many steps we are going to take. 
+    bool validate = true; //set to true if you wish to run a validation test
 
-    y[0] = bValue; //boundary condition, have to start somewhere.
-    yTruth[0] = knownQEval(0);
-    yError[0] = 0; //has to be zero as they must match at this point.
+    double y1;
+    double y2;
+    double yTruth1;
+    double yTruth2;
+    double yError;
+    //These variables temporarily store the values calculated before they are 
+    //printed to the output file and forgotten. 
+    //y is what we solve for, yTruth is the "known results."
+    //yError is the error of y when compared to yTruth
+    //Should be able to handle any size, unlike arrays, which just hog memory. 
+
+    y1 = bValue; //boundary condition, have to start somewhere.
+    yTruth1 = knownQEval(bound);
+    yError = 0; //has to be zero as they must match at this point.
     
-    printf("Position:\t%d\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\%\t\n",0,yTruth[0], y[0], yError[0]);
-     
     //SECTION II: The Loop
     //prior to beginning the loop, start the timer. 
 
     double startN = time(NULL);
+    //printf("Time: %.90f seconds\n", startN);
+    //set start time to current time. Printing disabled.
 
-    printf("Time: %.90f seconds\n", startN);
-    //set start time to current time. 
+    //also open the file we'll be writing data to. 
+    FILE *fp;
+    fp = fopen("oData.txt","w");
 
     //This loop will fill the arrays with information. 
+    //SIZE-1 required due to C's array indexing. 
+    //printf("INITIAL: Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound,yTruth1, y1, yError);
+    fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound,yTruth1, y1, yError);
     for (int i = 0; i < SIZE; i++){
-        y[i+1] = y[i] + step*diffyQEval(i*step,y[i]);
+        
+        y2 = y1 + step*diffyQEval(bound+i*step,y1);
         //This is Euler's method. 
         //Very basic, uses information on derivatives and functions
         //to calculate the function itself step by step.
         
-        yTruth[i+1] = knownQEval(step*(i+1));
-        yError[i+1] = (yTruth[i+1] - y[i+1])/yTruth[i+1];
+        yTruth2 = knownQEval(bound+step*(i+1));
+        yError = (yTruth2 - y2)/yTruth2;
         //Setting up the truth and error arrays at the same time.
 
         //After each step is calculated, print results. 
-        printf("Position:\t%d\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\%\t\n",i+1,yTruth[i+1], y[i+1], yError[i+1]);
+        //printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
+        //uncomment if you want live updates. 
+        fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
+
+        y1=y2;
+        yTruth1=yTruth2;
+
     }
-
+    
     //SECTION III: Analysis
-    //For now, there isn't much here, as the program prints its info as it find it. 
-    //Post-processing will go here, which is why we've kept the array memory allocated, 
-    // in case we want to use it here. 
+    //For now, there isn't much here, as the program prints its info as it finds it. 
+    //Post-processing will go here.
 
+    //DATA FORMATTER
+    // basic reference: https://www.tutorialspoint.com/cprogramming/c_file_io.htm
+    // used to be a file converter here, now there isn't, we just close the file. 
+    fclose(fp);
+
+    //TIMER
     double endN = time(NULL);
     //loop is complete, how long did it take?
-    printf("Time: %f seconds\n", startN);
-    printf("Time: %f seconds\n", endN);
-    printf("Time: %f seconds\n", endN-startN);
+    printf("Time Elapsed: %f seconds\n", endN-startN);
     //Only calculates to the closest second, for some reason.
 
-    
+    //validation test, only executes if requested
+    //also very quick and dirty, doesn't work for all functions, needs revamp. 
+    if (validate == true){
+        printf("Validating...\n");
+        
+        double yError2;
 
+        y1 = bValue; 
+        yTruth1 = knownQEval(bound);
+        yError = 0;
+        //Resetting everything for easy access 
 
-    //Features:
-    //Format Data for Excel for Visualization
-    //Time of Calculation Analysis
+        //we only need two things, so we can reuse y1 and y2s values.
+        y2 = y1 + step*diffyQEval(bound,y1);
+        yTruth2 = knownQEval(bound+step);
+        yError = (yTruth2 - y2)/yTruth2;
+        
+        y1 = y1 + step*0.5*diffyQEval(bound,y1);
+        yTruth1 = knownQEval(bound+step*0.5);
+        yError2 = ((yTruth1 - y1)/yTruth1);
 
-    
+        //we now have two first-step approximations, one according to the bound and another according to
+        //half the step.
+
+        double order =  log2(yError/yError2);
+        printf("Order: %f\n", order);
+        //this notably only works for certain functions. For instance, y' = x/(y+1), y(0)=0 always produces the exact
+        //same error (100%) on the first step since all the initial evaluations are zero every time. 
+    }
+
     printf("ODE Solver \"Odie\" V1 Shutting Down...\n");
     return 0;
 }
