@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
 #include <time.h> //we like to know how long things take. 
@@ -12,8 +13,8 @@
 //By G. M. Steward
 //The main goal of this project is to solve Ordinary Differential Equation Systems
 //in complete generality. However, we will take a while to get there.
-//This second version, V2, seeks to add Runge-Kutta order 2 (and 4)
-//Functionality for the solutions.
+//This second version, V3, is mainly concerned with validations.
+//As well as comment cleanup. 
 //Very munimal user functionality, will need to be revamped. 
 
 //Heavily influenced by Numerical Mathematics and Computing 6E by Cheney and Kincaid.
@@ -100,7 +101,7 @@ int main()
     yTruth1 = knownQEval(bound);
     yError = 0; //has to be zero as they must match at this point.
 
-    double saveErr1, saveErr2, saveIndex = 0; //variables for validation if needed. 
+    double saveErr1=0, saveErr2=0, saveIndex = 0; //variables for validation if needed. 
     //validation is currently under construction. 
     
     //SECTION II: The Loop
@@ -135,10 +136,16 @@ int main()
                 fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
                 
                 //validation: grab the first nonzero error, save its location.
-                if(validate==true && saveErr1 <= 0.000000000000001) {
+                if(validate==true && sqrt(saveErr1*saveErr1) <= 0.000000000000001) {
                     //tiny but nonzero number allows us to avoid roundoff error. 
                     saveErr1 = yError;
                     saveIndex = bound+step*(i+1);
+
+                    double yValidate = y1 + step*0.5*diffyQEval(bound+i*step*0.5,y1);
+                    double truthValidate = knownQEval(bound+step*0.5);
+                    saveErr2 = (truthValidate - yValidate)/truthValidate;
+                    double order =  log2(saveErr1/saveErr2);
+                    printf("Order of Error: %f\n", order);
                 }
 
                 y1=y2;
@@ -167,10 +174,19 @@ int main()
                 fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
 
                 //validation: grab the first nonzero error, save its location.
-                if(validate==true && saveErr1 <= 0.000000000000001) {
+                //validation: grab the first nonzero error, save its location.
+                if(validate==true && sqrt(saveErr1*saveErr1) <= 0.000000000000001) {
                     //tiny but nonzero number allows us to avoid roundoff error. 
                     saveErr1 = yError;
                     saveIndex = bound+step*(i+1);
+
+                    K1 = step*0.5*diffyQEval(bound+i*step,y1);
+                    K2 = step*0.5*diffyQEval(bound+i*step*0.5+step*0.5,y1 + K1);
+                    double yValidate = y1 + 0.5*(K1+K2);
+                    double truthValidate = knownQEval(bound+step*0.5);
+                    saveErr2 = (truthValidate - yValidate)/truthValidate;
+                    double order =  log2(saveErr1/saveErr2);
+                    printf("Order of Error: %f\n", order);
                 }
 
                 y1=y2;
@@ -201,10 +217,20 @@ int main()
                 fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
 
                 //validation: grab the first nonzero error, save its location.
-                if(validate==true && saveErr1 <= 0.000000000000001) {
+                if(validate==true && sqrt(saveErr1*saveErr1) <= 0.000000000000001) {
                     //tiny but nonzero number allows us to avoid roundoff error. 
                     saveErr1 = yError;
                     saveIndex = bound+step*(i+1);
+
+                    K1 = step*0.5*diffyQEval(bound+i*step*0.5,y1);
+                    K2 = step*0.5*diffyQEval(bound+i*step*0.5+0.25*step,y1 + K1*0.5);
+                    K3 = step*0.5*diffyQEval(bound+i*step*0.5+0.25*step,y1 + K2*0.5);
+                    K4 = step*0.5*diffyQEval(bound+i*step*0.5+0.5*step,y1 + K3);
+                    double yValidate = y1 + (1.0/6.0)*(K1+2.0*K2 + 2.0*K3 + K4);
+                    double truthValidate = knownQEval(bound+step*0.5);
+                    saveErr2 = (truthValidate - yValidate)/truthValidate;
+                    double order =  log2(saveErr1/saveErr2);
+                    printf("Order of Error: %f\n", order);
                 }
 
                 y1=y2;
@@ -244,11 +270,6 @@ int main()
 
         printf("Index: %f Numerical: %10.9e - Taylor: %10.9e = %10.9e\n",saveIndex, saveErr1, yError, saveErr1-yError);
         printf("If result is near zero (1e15 or smaller is sufficient) then the order is correct.\n");
-        //depricated order finder, might be able to work without presence of Taylor Series
-        //double order =  log2(yError/yError2);
-        //printf("Order: %f\n", order);
-        //this notably only works for certain functions. For instance, y' = x/(y+1), y(0)=0 always produces the exact
-        //same error (100%) on the first step since all the initial evaluations are zero every time. 
     }
 
     printf("ODE Solver \"Odie\" V1 Shutting Down...\n");
