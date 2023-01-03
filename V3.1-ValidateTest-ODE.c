@@ -22,7 +22,7 @@
 //Outside the program, we substantiate the differential equation itself.
 double diffyQEval (double x, double y)
 {
-    return y+1.0;
+    return x/(y+1.0);
     //This is the differential equation itself. 
     //"return y" is the most basic result, for a basic exponential diffyQ.
     //feel free to change the return value to other functions. 
@@ -32,7 +32,7 @@ double diffyQEval (double x, double y)
 //This is the function to evaluate the known solution. Must be set manually.
 double knownQEval (double x)
 {
-    return exp(x)-1.0;
+    return sqrt(x*x+1.0)-1.0;
     //the known solution to the differential equaiton. 
     //used to measure relative errors. 
     //exp(x) is "default."
@@ -44,19 +44,19 @@ double knownQEval (double x)
 double taylorQEval (double x, double order) {
     double result = 0;
     if (order > 0) {
-        result = result + x;
+        result = result + 0;
     }
     if (order > 1) {
         result = result + (x*x)/2.0;
     }
     if (order > 2) {
-        result = result + (x*x*x)/6.0;
+        result = result + 0;
     }
     if (order > 3) {
-        result = result + (x*x*x*x)/24.0;
+        result = result - (x*x*x*x)/8.0;
     }
     if (order > 4) {
-        result = result + (x*x*x*x*x)/120.0;
+        result = result + 0;
     }
     return result;
 }
@@ -71,12 +71,12 @@ int main()
     //Before the program actually starts, variables need to be created
     //and set, as well as the function itself chosen. 
     //The diffyQ itself can be found declared in diffyQEval().
-    double step = 1; //the "step" value. 
+    double step = 0.01; //the "step" value. 
     double bound = 0; //where the boundary/initial condition is.
     //Functionality will have to be altered for non-integer boundaries.
     double bValue = 0; //the value at y(bound). 
     //by default we say y(0) = 1. 
-    const int SIZE = 5; //How many steps we are going to take. 
+    const int SIZE = 100; //How many steps we are going to take. 
     bool validate = true; //set to true if you wish to run a validation test
 
     int method = 1; //sets the method. 1 is Euler's Method, 2 is Runge-Kutta Order 2. 4 is RK4
@@ -128,7 +128,7 @@ int main()
                 //to calculate the function itself step by step.
         
                 yTruth2 = knownQEval(bound+step*(i+1));
-                yError = (yTruth2 - y2)/yTruth2;
+                yError = (yTruth2 - y2);
 
                 //After each step is calculated, print results. 
                 printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
@@ -143,7 +143,7 @@ int main()
 
                     double yValidate = y1 + step*0.5*diffyQEval(bound+i*step*0.5,y1);
                     double truthValidate = knownQEval(bound+step*0.5);
-                    saveErr2 = (truthValidate - yValidate)/truthValidate;
+                    saveErr2 = (truthValidate - yValidate);
                     double order =  log2(saveErr1/saveErr2);
                     printf("Order of Error: %f\n", order);
                 }
@@ -166,7 +166,7 @@ int main()
                 //Should have second-order error. 
         
                 yTruth2 = knownQEval(bound+step*(i+1));
-                yError = (yTruth2 - y2)/yTruth2;
+                yError = (yTruth2 - y2);
 
                 //After each step is calculated, print results. 
                 printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
@@ -184,7 +184,7 @@ int main()
                     K2 = step*0.5*diffyQEval(bound+i*step*0.5+step*0.5,y1 + K1);
                     double yValidate = y1 + 0.5*(K1+K2);
                     double truthValidate = knownQEval(bound+step*0.5);
-                    saveErr2 = (truthValidate - yValidate)/truthValidate;
+                    saveErr2 = (truthValidate - yValidate);
                     double order =  log2(saveErr1/saveErr2);
                     printf("Order of Error: %f\n", order);
                 }
@@ -209,7 +209,7 @@ int main()
                 //Notably gives answers reasonably accurate up to rounding error! 
 
                 yTruth2 = knownQEval(bound+step*(i+1));
-                yError = (yTruth2 - y2)/yTruth2;
+                yError = (yTruth2 - y2);
 
                 //After each step is calculated, print results. 
                 printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
@@ -228,7 +228,7 @@ int main()
                     K4 = step*0.5*diffyQEval(bound+i*step*0.5+0.5*step,y1 + K3);
                     double yValidate = y1 + (1.0/6.0)*(K1+2.0*K2 + 2.0*K3 + K4);
                     double truthValidate = knownQEval(bound+step*0.5);
-                    saveErr2 = (truthValidate - yValidate)/truthValidate;
+                    saveErr2 = (truthValidate - yValidate);
                     double order =  log2(saveErr1/saveErr2);
                     printf("Order of Error: %f\n", order);
                 }
@@ -266,7 +266,7 @@ int main()
 
         taylorVal = taylorQEval(saveIndex, method);
         yTruth1 = knownQEval(saveIndex);
-        yError = (yTruth1 - taylorVal)/yTruth1;
+        yError = (yTruth1 - taylorVal);
 
         printf("Index: %f Numerical: %10.9e - Taylor: %10.9e = %10.9e\n",saveIndex, saveErr1, yError, saveErr1-yError);
         printf("If result is near zero (1e15 or smaller is sufficient) then the order is correct.\n");
