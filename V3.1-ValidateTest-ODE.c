@@ -13,8 +13,8 @@
 //By G. M. Steward
 //The main goal of this project is to solve Ordinary Differential Equation Systems
 //in complete generality. However, we will take a while to get there.
-//This third version, V3, is mainly concerned with validations.
-//As well as comment cleanup. 
+//This version is a "sideways" version that tests the order of the error term, it doesn't solve anything. 
+//Code not guaranteed to make sense due to this.
 //Very munimal user functionality, will need to be revamped. 
 //Taylor Series Validation Method was removed since it was not appropriate for this context. 
 
@@ -132,46 +132,16 @@ int main()
             double K1, K2, K3, K4; //The varabiles that store our Runge-Kutta results. 
             for (int i = 0; i < SIZE; i++){
                 
-                K1 = step*diffyQEval(bound+i*step,y1);
-                K2 = step*diffyQEval(bound+i*step+0.5*step,y1 + K1*0.5);
-                K3 = step*diffyQEval(bound+i*step+0.5*step,y1 + K2*0.5);
-                K4 = step*diffyQEval(bound+i*step+step,y1 + K3);
+                K1 = step*i*diffyQEval(bound,y1);
+                K2 = step*i*diffyQEval(bound+0.5*step*i,y1 + K1*0.5);
+                K3 = step*i*diffyQEval(bound+0.5*step*i,y1 + K2*0.5);
+                K4 = step*i*diffyQEval(bound+step*i,y1 + K3);
                 y2 = y1 + (1.0/6.0)*(K1+2.0*K2 + 2.0*K3 + K4);
-                //This is the Runge-Kutta 4 method.  
-                //Should have fourth-order error. 
-                //Regularly gives answers reasonably accurate up to rounding error! 
 
-                yTruth2 = knownQEval(bound+step*(i+1));
+                yTruth2 = knownQEval(bound+step*i);
                 yError = (yTruth2 - y2);
 
-                //After each step is calculated, print results. 
-                //printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
-                //uncomment if you want live updates. 
-                fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
-
-                //validation: grab the first nonzero error, find its order.
-                if(validate==true && sqrt(saveErr1*saveErr1) <= 0.000000000000001) {
-                    //tiny but nonzero number allows us to avoid roundoff error. 
-                    saveErr1 = yError;
-
-                    //The following is an algorithm for determining the rate of error 
-                    //convergence. A bit rudimentary, could be condensed, but is also only
-                    //called once so not relaly a concern and it is easier to read this way.
-                    K1 = step*0.5*diffyQEval(bound+i*step*0.5,y1);
-                    K2 = step*0.5*diffyQEval(bound+i*step*0.5+0.25*step,y1 + K1*0.5);
-                    K3 = step*0.5*diffyQEval(bound+i*step*0.5+0.25*step,y1 + K2*0.5);
-                    K4 = step*0.5*diffyQEval(bound+i*step*0.5+0.5*step,y1 + K3);
-                    double yValidate = y1 + (1.0/6.0)*(K1+2.0*K2 + 2.0*K3 + K4);
-                    double truthValidate = knownQEval(bound+step*0.5);
-                    saveErr2 = (truthValidate - yValidate);
-                    //Basically we just calculated the initial error for half step size. 
-                    //Now we can compare using the equation for order estimation:
-                    double order =  log2(saveErr1/saveErr2);
-                    printf("Order of Error: %f\n", order);
-                }
-
-                y1=y2;
-                yTruth1=yTruth2;
+                fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+i*step,yTruth2, y2, yError);
 
             }
             break;

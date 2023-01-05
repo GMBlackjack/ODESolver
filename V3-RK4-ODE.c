@@ -97,7 +97,7 @@ int main()
     //This loop fills out all the data. 
     //The switch is here to decide which method to use. 
     printf("INITIAL: Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound,yTruth1, y1, yError);
-    fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound,yTruth1, y1, yError);
+    fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound,yTruth1, y1, yError);
     switch(method) {
         case 1: {
             for (int i = 0; i < SIZE; i++){
@@ -113,7 +113,7 @@ int main()
                 //After each step is calculated, print results. 
                 //printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
                 //uncomment if you want live updates. 
-                fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
+                fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound+(i+1)*step,yTruth2, y2, yError);
                 
                 //validation: grab the first nonzero error, calculate its order.
                 if(validate==true && sqrt(saveErr1*saveErr1) <= 0.000000000000001) {
@@ -142,7 +142,8 @@ int main()
         case 2: {
             double K1, K2; //The varabiles that store our Runge-Kutta results. 
             for (int i = 0; i < SIZE; i++){
-                
+                int xi = 3;
+                double arrrr[xi];
                 K1 = step*diffyQEval(bound+i*step,y1);
                 K2 = step*diffyQEval(bound+i*step+step,y1 + K1);
                 y2 = y1 + 0.5*(K1+K2);
@@ -155,7 +156,7 @@ int main()
                 //After each step is calculated, print results. 
                 //printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
                 //uncomment if you want live updates. 
-                fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
+                fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound+(i+1)*step,yTruth2, y2, yError);
 
                 //validation: grab the first nonzero error, calculate its order.
                 if(validate==true && sqrt(saveErr1*saveErr1) <= 0.000000000000001) {
@@ -201,7 +202,8 @@ int main()
                 //After each step is calculated, print results. 
                 //printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
                 //uncomment if you want live updates. 
-                fprintf(fp,"Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
+                fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound+(i+1)*step,yTruth2, y2, yError);
+                //commas in the above fprintf statement are to make the output be readable as a csv file later. 
 
                 //validation: grab the first nonzero error, find its order.
                 if(validate==true && sqrt(saveErr1*saveErr1) <= 0.000000000000001) {
