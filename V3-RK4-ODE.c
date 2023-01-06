@@ -142,8 +142,6 @@ int main()
         case 2: {
             double K1, K2; //The varabiles that store our Runge-Kutta results. 
             for (int i = 0; i < SIZE; i++){
-                int xi = 3;
-                double arrrr[xi];
                 K1 = step*diffyQEval(bound+i*step,y1);
                 K2 = step*diffyQEval(bound+i*step+step,y1 + K1);
                 y2 = y1 + 0.5*(K1+K2);
