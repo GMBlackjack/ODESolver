@@ -48,6 +48,33 @@ int main()
     //and set, as well as the function itself chosen. 
     //The diffyQ itself can be found declared in diffyQEval().
 
+    //We import the method we wish to use to calculate via a butcher table from butcher.txt. 
+
+    FILE *fip;
+    fip = fopen("butcher.txt","r");
+    //Open the file for reading. Supposedly it already exists. 
+    char goal[3] = "RK4";
+    char key[100];
+    char buff[100];
+
+        while (goal[0] == 'R') {
+        // https://www.tutorialspoint.com/c_standard_library/c_function_fscanf.htm 
+        //fscanf help. (turns out, not very)
+        // https://cboard.cprogramming.com/c-programming/8978-scanf-delimiter-problem.html
+        // https://www.tutorialspoint.com/c_standard_library/c_function_ftell.htm
+        fscanf(fip,"%s", buff);
+        sscanf(buff,"%[^,]", key);
+        printf("Key: %s\n", key);
+        printf("%i\n", ftell(fip));
+        fseek(fip, ftell(fip)+1, SEEK_SET);
+        if (goal[0] == key[0] || ftell(fip) > 100) {
+            goal[0] = 'M';
+        }
+    }
+
+
+    fclose(fip);
+
     //Butcher Table: for now we define our method table here. 
     //Uncomment the method you wish to use. 
     //double butcher[4][4] = {{0.0,0.0,0.0,0.0},{1.0,1.0,0.0,0.0},{0.5,0.25,0.25,0.0},{3,1.0/6.0,1.0/6.0,2.0/3.0}};
