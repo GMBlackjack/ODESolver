@@ -1,78 +1,40 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <stdbool.h>
-#include <time.h> //we like to know how long things take. 
-//having not used time.h before we refered to
-//https://en.wikibooks.org/wiki/C_Programming/time.h
+#include "stdio.h"
+#include "stdlib.h"
+#include "math.h"
+#include "stdbool.h"
+#include "time.h"
 
-//Note: math.h requries the "-lm" arg be added at the END of tasks.json's arguments.
-//https://askubuntu.com/questions/332884/how-to-compile-a-c-program-that-uses-math-h
+    //Outside the program, we substantiate the differential equation itself.
+    double diffyQEval (double x, double y)
+    {
+        return y+1.0;
+        //This is the differential equation itself. 
+        //"return y+1.0" is the "default" selection for its simplicity yet usefulness for testing the algorithms.
+        //feel free to change the return value to other functions. 
+        //Note: not guaranteed to work for functions that are not well-behaved. 
+    }
 
-//ODE Solver
-//By G. M. Steward
-//The main goal of this project is to solve Ordinary Differential Equation Systems
-//in complete generality. However, we will take a while to get there.
-//This fourth version seeks to allow the use of any RK-type method if provided a Butcher Table array.
-//Very munimal user functionality, will need to be revamped. 
+    //This is the function to evaluate the known solution. Must be set manually.
+    double knownQEval (double x)
+    {
+        return exp(x)-1.0;
+        //the known solution to the differential equaiton. 
+        //used to measure relative errors. 
+        //"return exp(x)-1.0" is "default."
+    }
+    
+/*
+ * Fill out later
+ */
+int main() {
 
-//Heavily influenced by Numerical Mathematics and Computing 6E by Cheney and Kincaid.
-
-//Outside the program, we substantiate the differential equation itself.
-double diffyQEval (double x, double y)
-{
-    return y+1.0;
-    //This is the differential equation itself. 
-    //"return y+1.0" is the "default" selection for its simplicity yet usefulness for testing the algorithms.
-    //feel free to change the return value to other functions. 
-    //Note: not guaranteed to work for functions that are not well-behaved. 
-}
-
-//This is the function to evaluate the known solution. Must be set manually.
-double knownQEval (double x)
-{
-    return exp(x)-1.0;
-    //the known solution to the differential equaiton. 
-    //used to measure relative errors. 
-    //"return exp(x)-1.0" is "default."
-}
-
-//Remember when adjusting these to adjust the boundary value bValue in main() as well. 
-
-int main()
-{
+double butcher[9][9] = {{0.0,0,0,0,0,0,0,0,0},{0.1,0.1,0,0,0,0,0,0,0},{0.2222222222222222,-0.024691358024691357,0.24691358024691357,0,0,0,0,0,0},{0.42857142857142855,0.44825072886297374,-0.7871720116618076,0.7674927113702624,0,0,0,0,0},{0.6,0.5896363636363636,-0.9818181818181818,0.7125734265734266,0.2796083916083916,0,0,0,0},{0.8,-0.7135892255892256,1.309090909090909,0.12012834224598931,-0.652013468013468,0.7363834422657952,0,0,0},{1.0,2.3404882154882154,-3.1818181818181817,-0.7631237540739804,4.482612117227502,-2.8458605664488017,0.9677021696252466,0,0},{1.0,1.74913946007696,-2.3904220779220777,-0.3962525737836824,3.272858329348714,-2.063516378773732,0.828193241053818,0.0,0},{6.0,0.07060185185185185,0.0,0.30584941077022526,0.11510382423843962,0.18722766884531591,0.25425295857988167,-0.033035714285714286,0.1}};
     printf("Beginning ODE Solver \"Odie\" V4...\n");
     
     //SECTION I: Preliminaries
     //Before the program actually starts, variables need to be created
     //and set, as well as the function itself chosen. 
     //The diffyQ itself can be found declared in diffyQEval().
-
-    //Butcher Table: for now we define our method table here. 
-    //When run through the notebook this section is absent as it fills it itself. 
-    //Uncomment the method you wish to use. 
-    //double butcher[4][4] = {{0.0,0.0,0.0,0.0},{1.0,1.0,0.0,0.0},{0.5,0.25,0.25,0.0},{3,1.0/6.0,1.0/6.0,2.0/3.0}};
-    //This is the SSPRK3 method, chosen since it has a simple array but with less zeroes than other options. 
-    //Note that the "3" in the last row is the order, that slot is always empty on a butcher table. 
-    //If you wish for a different method, comment out the one above and initate one of the below:
-
-    //double butcher[2][2] = {{0.0,0.0},{1,1.0}};
-    //This is Euler's Method, good for test cases since it's easy to look at. 
-
-    //double butcher[3][3] = {{0.0,0.0,0.0},{1.0,1.0,0.0},{2,0.5,0.5}};
-    //RK2
-
-    //double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
-    //RK4
-
-    double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
-    {0.2,0.2,0.0,0.0,0.0,0.0,0.0},
-    {0.3,3.0/40.0,9.0/40.0,0.0,0.0,0.0,0.0},
-    {0.6,0.3,-9.0/10.0,1.2,0.0,0.0,0.0},
-    {1.0,-11.0/54.0,2.5,-70.0/27.0,35.0/27.0,0.0,0.0},
-    {7.0/8.0,1631.0/55296.0,175.0/512.0,575.0/13824.0,44275.0/110592.0,253.0/4096.0,0.0},
-    {5,37.0/378.0,0.0,250.0/621.0,125.0/594.0,0.0,512.0/1771.0}};
-    //RK5 (Cash-Karp version)
 
     //How to get array size: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
     size_t methodSize = sizeof(butcher)/sizeof(butcher[0][0]);
@@ -153,7 +115,7 @@ int main()
                 
         //validation: grab the first nonzero error, calculate its order.
         if(validate==true && i == 0.0) {
-            //Only activate on first step. 
+            //Only activate on first step.
             saveErr1 = yError;
 
             //The following is an algorithm for determining the rate of error 
@@ -199,6 +161,4 @@ int main()
 
     printf("ODE Solver \"Odie\" V4 Shutting Down...\n");
     return 0;
-}
-
-// - GM, master of dogs.
+    }
