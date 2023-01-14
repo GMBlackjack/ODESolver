@@ -7,7 +7,7 @@
     //Outside the program, we substantiate the differential equation itself.
     double diffyQEval (double x, double y)
     {
-        return y+1.0;
+        return cos(x);
         //This is the differential equation itself. 
         //"return y+1.0" is the "default" selection for its simplicity yet usefulness for testing the algorithms.
         //feel free to change the return value to other functions. 
@@ -17,7 +17,7 @@
     //This is the function to evaluate the known solution. Must be set manually.
     double knownQEval (double x)
     {
-        return exp(x)-1.0;
+        return sin(x);
         //the known solution to the differential equaiton. 
         //used to measure relative errors. 
         //"return exp(x)-1.0" is "default."
@@ -28,7 +28,7 @@
  */
 int main() {
 
-double butcher[9][9] = {{0.0,0,0,0,0,0,0,0,0},{0.1,0.1,0,0,0,0,0,0,0},{0.2222222222222222,-0.024691358024691357,0.24691358024691357,0,0,0,0,0,0},{0.42857142857142855,0.44825072886297374,-0.7871720116618076,0.7674927113702624,0,0,0,0,0},{0.6,0.5896363636363636,-0.9818181818181818,0.7125734265734266,0.2796083916083916,0,0,0,0},{0.8,-0.7135892255892256,1.309090909090909,0.12012834224598931,-0.652013468013468,0.7363834422657952,0,0,0},{1.0,2.3404882154882154,-3.1818181818181817,-0.7631237540739804,4.482612117227502,-2.8458605664488017,0.9677021696252466,0,0},{1.0,1.74913946007696,-2.3904220779220777,-0.3962525737836824,3.272858329348714,-2.063516378773732,0.828193241053818,0.0,0},{6.0,0.07060185185185185,0.0,0.30584941077022526,0.11510382423843962,0.18722766884531591,0.25425295857988167,-0.033035714285714286,0.1}};
+double butcher[7][7] = {{0.0,0,0,0,0,0,0},{0.2,0.2,0,0,0,0,0},{0.3,0.075,0.225,0,0,0,0},{0.6,0.3,-0.9,1.2,0,0,0},{1.0,-0.2037037037037037,2.5,-2.5925925925925926,1.2962962962962963,0,0},{0.875,0.029495804398148147,0.341796875,0.041594328703703706,0.40034541377314814,0.061767578125,0},{5.0,0.09788359788359788,0.0,0.4025764895330113,0.21043771043771045,0.0,0.2891022021456804}};
     printf("Beginning ODE Solver \"Odie\" V4...\n");
     
     //SECTION I: Preliminaries
@@ -42,7 +42,7 @@ double butcher[9][9] = {{0.0,0,0,0,0,0,0,0,0},{0.1,0.1,0,0,0,0,0,0,0},{0.2222222
     printf("Method Order: %i. \nOrder of Error should be near Method Order + 1.\n",(int)butcher[dimension-1][0]);
     printf("If not, try a larger step size, roundoff error may be interfering.\n");
 
-    double step = 0.01; //the "step" value.
+    double step = 0.1; //the "step" value.
     double bound = 0.0; //where the boundary/initial condition is.
     double bValue = 0.0; //the value at y(bound). By default we say y(0) = 0.
     const int SIZE = 1000; //How many steps we are going to take?
