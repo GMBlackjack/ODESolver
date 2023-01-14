@@ -7,7 +7,7 @@
     //Outside the program, we substantiate the differential equation itself.
     double diffyQEval (double x, double y)
     {
-        return cos(x);
+        return exp(x) - exp(-x) - 1;
         //This is the differential equation itself. 
         //"return y+1.0" is the "default" selection for its simplicity yet usefulness for testing the algorithms.
         //feel free to change the return value to other functions. 
@@ -17,7 +17,7 @@
     //This is the function to evaluate the known solution. Must be set manually.
     double knownQEval (double x)
     {
-        return sin(x);
+        return exp(x) + exp(-x) - x;
         //the known solution to the differential equaiton. 
         //used to measure relative errors. 
         //"return exp(x)-1.0" is "default."
@@ -28,7 +28,7 @@
  */
 int main() {
 
-double butcher[7][7] = {{0.0,0,0,0,0,0,0},{0.2,0.2,0,0,0,0,0},{0.3,0.075,0.225,0,0,0,0},{0.6,0.3,-0.9,1.2,0,0,0},{1.0,-0.2037037037037037,2.5,-2.5925925925925926,1.2962962962962963,0,0},{0.875,0.029495804398148147,0.341796875,0.041594328703703706,0.40034541377314814,0.061767578125,0},{5.0,0.09788359788359788,0.0,0.4025764895330113,0.21043771043771045,0.0,0.2891022021456804}};
+double butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};
     printf("Beginning ODE Solver \"Odie\" V4...\n");
     
     //SECTION I: Preliminaries
@@ -42,9 +42,9 @@ double butcher[7][7] = {{0.0,0,0,0,0,0,0},{0.2,0.2,0,0,0,0,0},{0.3,0.075,0.225,0
     printf("Method Order: %i. \nOrder of Error should be near Method Order + 1.\n",(int)butcher[dimension-1][0]);
     printf("If not, try a larger step size, roundoff error may be interfering.\n");
 
-    double step = 0.1; //the "step" value.
+    double step = 0.001; //the "step" value.
     double bound = 0.0; //where the boundary/initial condition is.
-    double bValue = 0.0; //the value at y(bound). By default we say y(0) = 0.
+    double bValue = 2.0; //the value at y(bound). By default we say y(0) = 0.
     const int SIZE = 1000; //How many steps we are going to take?
     bool validate = true; //set to true if you wish to run a validation test.
     //Attempts to find the order of the method used. 
