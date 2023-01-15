@@ -4,23 +4,45 @@
 #include "stdbool.h"
 #include "time.h"
 
-    //Outside the program, we substantiate the differential equation itself.
-    double diffyQEval (double x, double y)
+    double diffyQEval (double x, double y[], int i)
     {
-        return exp(x) - exp(-x) - 1;
-        //This is the differential equation itself. 
-        //"return y+1.0" is the "default" selection for its simplicity yet usefulness for testing the algorithms.
-        //feel free to change the return value to other functions. 
+        switch(i){
+            case 0: {
+                return y[1]; 
+                //we use 0 to represent the answer we eventually want to get
+                //in this case, the solution to y'' = y+x, stated here as y'=z
+                break;
+            }
+            case 1: {
+                return y[0] + x;
+                //1 represents the first derivative. y''=y+x, but when we split it up we got y'=z. This equation returns the value
+                //for the z derivative, z'=y+x
+                break;
+            }
+            // case...
+            //add more cases for higher order systems. 
+            default: {
+                //Any number could be a result, theoretically, so there isn't an easy error value to put here.
+            }
+        }
+        //This is the differential equation system itself. 
+        //By default we have a very simple y'' = y+x situation here, split up into
+        // y[0]' = y[1]
+        // y[1]' = y[0]+x
+        //Naturally other equaitons can be put in, but be sure to change the numberOfEquations value!
+        //feel free to change the return values to other functions. 
         //Note: not guaranteed to work for functions that are not well-behaved. 
+        //We have this set up so y[0] would be the final "answer" for a split-up higher-order ODE. 
     }
 
     //This is the function to evaluate the known solution. Must be set manually.
     double knownQEval (double x)
     {
         return exp(x) + exp(-x) - x;
-        //the known solution to the differential equaiton. 
+        //the known solution to the differential equaiton, specifically what we call y[0]
         //used to measure relative errors. 
-        //"return exp(x)-1.0" is "default."
+        //"exp(x) + exp(-x) - x" is "default." as it is the answer to the differential equation we chose. 
+        //Do note that this would change with different boundary conditions. 
     }
     
 /*
@@ -28,7 +50,7 @@
  */
 int main() {
 
-double butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};
+double butcher[5][5] = {{0.0,0,0,0,0},{0.5,0.5,0,0,0},{0.5,0.0,0.5,0,0},{1.0,0.0,0.0,1.0,0},{4.0,0.16666666666666666,0.3333333333333333,0.3333333333333333,0.16666666666666666}};
     printf("Beginning ODE Solver \"Odie\" V4...\n");
     
     //SECTION I: Preliminaries
@@ -42,15 +64,20 @@ double butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};
     printf("Method Order: %i. \nOrder of Error should be near Method Order + 1.\n",(int)butcher[dimension-1][0]);
     printf("If not, try a larger step size, roundoff error may be interfering.\n");
 
-    double step = 0.001; //the "step" value.
+    double step = 0.1; //the "step" value.
     double bound = 0.0; //where the boundary/initial condition is.
-    double bValue = 2.0; //the value at y(bound). By default we say y(0) = 0.
-    const int SIZE = 1000; //How many steps we are going to take?
+    int numberOfEquations = 2; //How many equations are in our system?
+    //Be very careful setting these boundary conditions, they need to match the number of equations. 
+    double bValue[numberOfEquations]; 
+    bValue[0] = 2.0;
+    bValue[1] = -1.0;
+    //the value at y(bound). By default we say y(0) = 0.
+    const int SIZE = 10; //How many steps we are going to take?
     bool validate = true; //set to true if you wish to run a validation test.
     //Attempts to find the order of the method used. 
 
-    double y1;
-    double y2;
+    double y1[numberOfEquations];
+    double y2[numberOfEquations];
     double yTruth1;
     double yTruth2;
     double yError;
@@ -59,8 +86,12 @@ double butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};
     //y is what we solve for, yTruth is the "known results."
     //yError is the error of y when compared to yTruth
     //Should be able to handle any size, unlike arrays, which just hog memory. 
+    //Errors and Truth are not arrays as they are only concerned with the final value. 
 
-    y1 = bValue; //boundary condition, have to start somewhere.
+    for (int n = 0; n < numberOfEquations; n++) {
+        y1[n] = bValue[n];
+        //Assign the initial values to the boundary conditions. 
+    } 
     yTruth1 = knownQEval(bound);
     yError = 0; //has to be zero as they must match at this point. 
     //If not, the boundary conditions were not stated properly. 
@@ -80,70 +111,126 @@ double butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};
 
     //This loop fills out all the data.
     //It takes a provided butcher table and executes the method stored within. Any table should work. 
-    printf("INITIAL: Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound,yTruth1, y1, yError);
-    fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound,yTruth1, y1, yError);
+    printf("INITIAL: Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound,yTruth1, y1[0], yError);
+    fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound,yTruth1, y1[0], yError);
     //Comma delimiters are printed to the file so it can be converted to .csv with ease. 
-    for (int i = 0; i < SIZE; i++){
-        
-        double k[dimension]; //Create an array that can store all the steps needed for the method.
+    
+    for (int i = 0; i < SIZE; i++){ 
+        //printf("%i",m);
+        double K[dimension][numberOfEquations];
+        //Since we'll be calling this while it's empty, even though there should be no errors due
+        //to the way it's set up, let's go ahead and fill it with zeroes.
+        for (int j = 0; j<dimension; j++) {
+            for (int n = 0; n<numberOfEquations; n++) {
+                K[j][n]=0.0;
+            }
+        }
+        //each diffyQ has its own set of K-values, one for each equation. 
+
+        double yInsert[numberOfEquations];
+        //We also need an array for the inserted y-values for each equation. 
+        //Most applications actually have the different yInsert values be independent, so 
+        //if we knew the form of the equation we could simplify the code.
+        //However, we need to make sure to always fill everything in case we have a system
+        //of the form y'=f(u,y) u'=g(u,y)
+
         for (int j = 1; j < dimension; j++) {
             //Due to the way the Butcher Table is formatted, start our index at 1 and stop at the end. 
             double xInsert = bound+i*step + butcher[j-1][0]*step;
-            //x does not change much for different tables, just adjust the "step correction" term. 
-            double yInsert = y1; //The formu of the y-insertion into our function changes, so it needs a loop.
-            for (int n = 1; n < dimension; n++) {
-                //Once again, start at index of 1 rather than 0. 
-                yInsert = yInsert + butcher[j-1][n]*k[n];
-            }
-            k[j] = step*diffyQEval(xInsert,yInsert); //calculate the complete k-value. 
-        }
-        //Now that we have all the k-values set, we need to find the actual result in one final loop. 
-        k[0] = y1;
-        for (int j = 1; j < dimension; j++) {
-            k[0] = k[0] + butcher[dimension-1][j]*k[j];
-        }
-        y2 = k[0];
-        //possible efficiency option here: remove y2 and just use k[0]. That will make the code more obtuse, though.
+            //x does not change much for different tables, just adjust the "step correction" term.
+            //Is the same for every equation too.
 
+            for (int n = 0; n < numberOfEquations; n++) {
+                yInsert[n] = y1[n];
+            } 
+
+            for (int n = 1; n < dimension; n++) {
+                //Once again, start at index of 1 rather than 0.
+                for (int q = 0; q < numberOfEquations; q++) {
+                    yInsert[q] = yInsert[q] + butcher[j-1][n]*K[n][q];
+                }
+                //Each individual y portion is dependent on one of the K values.
+                //K values are initially set to zero even though technically whenever 
+                //we would use an undeclared K-value the butcher table would have zero.
+                //You know, just in case something goes wrong. 
+            }
+
+            for (int n = 0; n < numberOfEquations; n++) {
+                K[j][n] = step*diffyQEval(xInsert,yInsert,n);
+                //Actually calculate the K-values.
+            } 
+
+        }
+        //Now that we have all the K-values set, we need to find the actual result in one final loop.
+        //The sum for the first set... 
+        for (int n = 0; n< numberOfEquations; n++) {
+            K[0][n] = y1[n];
+            for (int j = 1; j < dimension; j++) {
+                K[0][n] = K[0][n] + butcher[dimension-1][j]*K[j][n];
+            }
+            y2[n] = K[0][n];
+        }
+        
         yTruth2 = knownQEval(bound+step*(i+1));
-        yError = (yTruth2 - y2);
+        yError = (yTruth2 - y2[0]);
 
         //After each step is calculated, print results. 
         //printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
         //uncomment if you want live updates. 
-        fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound+(i+1)*step,yTruth2, y2, yError);
+        //if (m==0) {
+            fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound+(i+1)*step,yTruth2, y2[0], yError);
+        //}
                 
         //validation: grab the first nonzero error, calculate its order.
-        if(validate==true && i == 0.0) {
-            //Only activate on first step.
+        //Currently broken. 
+        if(validate==true && i == 0.0) { //currently set to ignore this. REMEMBER TO TURN BACK ON LATER!
+            //Only activate on first step. 
             saveErr1 = yError;
 
             //The following is an algorithm for determining the rate of error 
             //convergence. A bit rudimentary, could be condensed, but is also only
             //called once so not relaly a concern and it is easier to read this way. 
-            for (int j = 1; j < dimension; j++) {
-                double xInsert = bound+i*step*0.5 + butcher[j-1][0]*step*0.5;
-                double yInsert = y1;
-                for (int n = 1; n < dimension; n++) {
-                    yInsert = yInsert + butcher[j-1][n]*k[n];
+            double step2 = step*0.5;
+            //It is easier to just use another variable than multiply the step by 0.5 every time. 
+                for (int j = 0; j<dimension; j++) {
+                    for (int n = 0; n<numberOfEquations; n++) {
+                        K[j][n]=0.0;
+                    }
                 }
-                k[j] = step*0.5*diffyQEval(xInsert,yInsert);
-            }
-            k[0] = y1;
-            for (int j = 1; j < dimension; j++) {
-                k[0] = k[0] + butcher[dimension-1][j]*k[j];
-            }
-            double truthValidate = knownQEval(bound+step*0.5);
-            saveErr2 = (truthValidate - k[0]);
+                for (int j = 1; j < dimension; j++) {
+                    double xInsert = bound+i*step2 + butcher[j-1][0]*step2;
+                    for (int n = 0; n < numberOfEquations; n++) {
+                        yInsert[n] = y1[n];
+                    } 
+                    for (int n = 1; n < dimension; n++) {
+                        for (int q = 0; q < numberOfEquations; q++) {
+                            yInsert[q] = yInsert[q] + butcher[j-1][n]*K[n][q];
+                        }
+                    }
+                    for (int n = 0; n < numberOfEquations; n++) {
+                        K[j][n] = step2*diffyQEval(xInsert,yInsert,n);
+                    } 
+                }
+                for (int n = 0; n< numberOfEquations; n++) {
+                    K[0][n] = y1[n];
+                    for (int j = 1; j < dimension; j++) {
+                        K[0][n] = K[0][n] + butcher[dimension-1][j]*K[j][n];
+                    }
+                }
+            double truthValidate = knownQEval(bound+step2);
+            saveErr2 = (truthValidate - K[0][0]);
             //Basically we just calculated the initial error for half step size. 
             //Now we can compare using the equation for order estimation:
             double order =  log2(saveErr1/saveErr2);
             printf("Order of Error: %f\n", order);
         }
-
-        y1=y2;
+        
+        for (int n = 0; n < numberOfEquations; n++) {
+            y1[n]=y2[n];
+        } 
+        //make sure to assign all variables to the next step. 
         yTruth1=yTruth2;
-
+         
     }
 
     //SECTION III: Analysis
@@ -161,4 +248,6 @@ double butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};
 
     printf("ODE Solver \"Odie\" V4 Shutting Down...\n");
     return 0;
+
+// - GM, master of dogs.
     }

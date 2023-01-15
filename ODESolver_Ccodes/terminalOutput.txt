@@ -1,8 +1,8 @@
 Beginning ODE Solver "Odie" V4...
-Method Order: 2. 
+Method Order: 4. 
 Order of Error should be near Method Order + 1.
 If not, try a larger step size, roundoff error may be interfering.
 INITIAL: Position:	0.000000	Truth:	2.000000000e+00	Calculated:	2.000000000e+00	Error:	0.000000000e+00	
-Order of Error: 4.023333
+Order of Error: 6.000189
 Time Elapsed: 0.000000 seconds
 ODE Solver "Odie" V4 Shutting Down...
