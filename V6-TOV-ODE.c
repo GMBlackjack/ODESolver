@@ -23,20 +23,20 @@
 double diffyQEval (double x, double y[], int i)
 {
     switch(i){
-        case 1: {
+        case 0: {
             return -((1.0+y[0])*( (2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0] ))/(x*2.0*(1.0 - (2.0*y[2])/(x))); 
             break;
         }
-        case 2: {
+        case 1: {
             return ((2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0])/(x*(1.0 - (2.0*y[2])/(x)));
             break;
         }
-        case 3: {
+        case 2: {
             return 4*M_PI*x*x;
             break;
         }
-        case 0: {
-            return (y[3])/(x*sqrt(1-2.0*y[2])/(x));
+        case 3: {
+            return (y[3])/(x*sqrt(1.0-(2.0*y[2])/x));
             break;
         }
         // case...
@@ -65,6 +65,34 @@ double knownQEval (double x)
     //Do note that this would change with different boundary conditions. 
 }
 
+double getInitialCondition (int n)
+{
+    //be sure to have these MATCH the equations in diffyQEval
+    switch(n){
+        case 0: {
+            return 0.016714611225000002; 
+            break;
+        }
+        case 1: {
+            return 0.0;
+            break;
+        }
+        case 2: {
+            return 6.115617413201306e-16;
+            break;
+        }
+        case 3: {
+            return 6.998108874980957e-06;
+            break;
+        }
+        // case...
+        //add more cases for higher order systems. 
+        default: {
+            //Any number could be a result, theoretically, so there isn't an easy error value to put here.
+        }
+    }
+}
+
 //Remember when adjusting these to adjust the boundary value bValue in main() as well. 
 
 int main()
@@ -84,7 +112,7 @@ int main()
     //Note that the "3" in the last row is the order, that slot is always empty on a butcher table. 
     //If you wish for a different method, comment out the one above and initate one of the below:
 
-    double butcher[2][2] = {{0.0,0.0},{1,1.0}};
+    //double butcher[2][2] = {{0.0,0.0},{1,1.0}};
     //This is Euler's Method, good for test cases since it's easy to look at. 
 
     //double butcher[3][3] = {{0.0,0.0,0.0},{1.0,1.0,0.0},{2,0.5,0.5}};
@@ -93,13 +121,13 @@ int main()
     //double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
     //RK4
 
-    /*double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
+    double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
     {0.2,0.2,0.0,0.0,0.0,0.0,0.0},
     {0.3,3.0/40.0,9.0/40.0,0.0,0.0,0.0,0.0},
     {0.6,0.3,-9.0/10.0,1.2,0.0,0.0,0.0},
     {1.0,-11.0/54.0,2.5,-70.0/27.0,35.0/27.0,0.0,0.0},
     {7.0/8.0,1631.0/55296.0,175.0/512.0,575.0/13824.0,44275.0/110592.0,253.0/4096.0,0.0},
-    {5,37.0/378.0,0.0,250.0/621.0,125.0/594.0,0.0,512.0/1771.0}};*/
+    {5,37.0/378.0,0.0,250.0/621.0,125.0/594.0,0.0,512.0/1771.0}};
     //RK5 (Cash-Karp version)
 
     //How to get array size: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
@@ -108,22 +136,20 @@ int main()
     printf("Method Order: %i. \nOrder of Error should be near Method Order + 1.\n",(int)butcher[dimension-1][0]);
     printf("If not, try a larger step size, roundoff error may be interfering.\n");
 
-    double step = 0.01; //the "step" value.
-    double bound = 1.0; //where the boundary/initial condition is. Same for every equation in the system.
-
+    double step = 0.001; //the "step" value.
+    double bound = 0.00000001; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 4; //How many equations are in our system?
-    //Be very careful setting these boundary conditions, they need to match the number of equations. 
-    double bValue[numberOfEquations]; 
-    bValue[0] = 0.0;
-    bValue[1] = 0.0;
-    bValue[2] = 0.0;
-    bValue[3] = 0.0;
-    
-    //the value at y(bound). By default we say y[0](0) = 0 and y[1](0) = 1
-    //There has to be a better way to do this, may involve working in the exterior python, we shall see. 
-    const int SIZE = 100; //How many steps we are going to take?
+    const int SIZE = 2000; //How many steps we are going to take?
     bool validate = false; //set to true if you wish to run a validation test.
     //Attempts to find the order of the method used. 
+
+    double bValue[numberOfEquations]; 
+
+    //This here sets the initial conditions as declared in getInitialCondition()
+    for (int n = 0; n < numberOfEquations; n++) {
+        bValue[n] = getInitialCondition(n);
+    }
+
 
     double y1[numberOfEquations];
     double y2[numberOfEquations];
@@ -156,12 +182,24 @@ int main()
 
     //also open the file we'll be writing data to. 
     FILE *fp;
-    fp = fopen("oDataD.txt","w");
+    fp = fopen("oData.txt","w");
 
     //This loop fills out all the data.
     //It takes a provided butcher table and executes the method stored within. Any table should work. 
-    printf("INITIAL: Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound,yTruth1, y1[0], yError);
-    fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound,yTruth1, y1[0], yError);
+
+    //First though, let's print out our data. The print function needs to be adaptable to any size of data. 
+    //We can do this with multiple print functions and just not adding the newline character until we're done.
+    //Commented out version is for if we want to compare with a known function.
+    //printf("INITIAL: Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound,yTruth1, y1[0], yError);  
+    printf("INITIAL: Position:,\t%f,\t",bound);
+    fprintf(fp, "Position:,\t%f,\t",bound);
+    for (int n = 0; n < numberOfEquations; n++) {
+        printf("Equation %i:,\t%10.9e,\t",n, y1[n]);
+        fprintf(fp, "Equation %i:,\t%10.9e,\t",n, y1[n]);
+    }
+    printf("\n");
+    fprintf(fp,"\n");
+
     //Comma delimiters are printed to the file so it can be converted to .csv with ease. 
     
     for (int i = 0; i < SIZE; i++){ 
@@ -224,15 +262,19 @@ int main()
         yError = (yTruth2 - y2[0]);
 
         //After each step is calculated, print results. 
-        //printf("Position:\t%f\tTruth:\t%10.9e\tCalculated:\t%10.9e\tError:\t%10.9e\t\n",bound+(i+1)*step,yTruth2, y2, yError);
-        //uncomment if you want live updates. 
-        //if (m==0) {
-            fprintf(fp,"Position:,\t%f,\tTruth:,\t%10.9e,\tCalculated:,\t%10.9e,\tError:,\t%10.9e,\t\n",bound+(i+1)*step,yTruth2, y2[0], yError);
-        //}
+        //uncomment printf sections if you want live updates. 
+        //printf("Position:,\t%f,\t",bound);
+        fprintf(fp, "Position:,\t%f,\t",bound+(i+1)*step);
+        for (int n = 0; n < numberOfEquations; n++) {
+            //printf("Equation %i:,\t%10.9e,\t",n, y1[n]);
+            fprintf(fp, "Equation %i:,\t%10.9e,\t",n, y1[n]);
+        }
+        //printf("\n");
+        fprintf(fp,"\n");
                 
         //validation: grab the first nonzero error, calculate its order.
         //Currently broken. 
-        if(validate==true && i == 0.0) { //currently set to ignore this. REMEMBER TO TURN BACK ON LATER!
+        if(validate==true && i == 0.0) { 
             //Only activate on first step. 
             saveErr1 = yError;
 

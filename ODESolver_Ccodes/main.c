@@ -64,7 +64,7 @@ double butcher[5][5] = {{0.0,0,0,0,0},{0.5,0.5,0,0,0},{0.5,0.0,0.5,0,0},{1.0,0.0
     printf("Method Order: %i. \nOrder of Error should be near Method Order + 1.\n",(int)butcher[dimension-1][0]);
     printf("If not, try a larger step size, roundoff error may be interfering.\n");
 
-    double step = 0.1; //the "step" value.
+    double step = 0.01; //the "step" value.
     double bound = 0.0; //where the boundary/initial condition is.
     int numberOfEquations = 2; //How many equations are in our system?
     //Be very careful setting these boundary conditions, they need to match the number of equations. 
@@ -72,7 +72,7 @@ double butcher[5][5] = {{0.0,0,0,0,0},{0.5,0.5,0,0,0},{0.5,0.0,0.5,0,0},{1.0,0.0
     bValue[0] = 2.0;
     bValue[1] = -1.0;
     //the value at y(bound). By default we say y(0) = 0.
-    const int SIZE = 10; //How many steps we are going to take?
+    const int SIZE = 100; //How many steps we are going to take?
     bool validate = true; //set to true if you wish to run a validation test.
     //Attempts to find the order of the method used. 
 
