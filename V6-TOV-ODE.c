@@ -22,21 +22,67 @@
 
 double diffyQEval (double x, double y[], int i)
 {
+/*
+void diffyQEval (double x, double y[])
+{
+
+    if(x == 0) {
+        y[0] = 0;
+        y[1] = 0;
+        y[2] = 0;
+        y[3] = 1;
+    }
+    else {
+        double y0 = y[0];
+        double y1 = y[1];
+        double y2 = y[2];
+        double y3 = y[3];
+        y[0] = -((rho+y0)*( (2.0*y2)/(x) + 8.0*M_PI*x*x*y0 ))/(x*2.0*(1.0 - (2.0*y2)/(x))); 
+        y[1] = ((2.0*y2)/(x) + 8.0*M_PI*x*x*y0)/(x*(1.0 - (2.0*y2)/(x)));
+        y[2] = 4*M_PI*x*x*rho;
+        y[3] = (y3)/(x*sqrt(1.0-(2.0*y3)/x));
+    }
+*/
+
+    if (y[0] < 0) {
+        y[0] = 0;
+    }
+    //This is to stop the root from reporting NaN.
+    //Is there a more eloquent way to do this? 
+    double rho = sqrt(y[0]) + y[0];    
     switch(i){
-        case 0: {
-            return -((1.0+y[0])*( (2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0] ))/(x*2.0*(1.0 - (2.0*y[2])/(x))); 
+        case 0: {          
+            if (x == 0.0) {
+                return 0;
+            } else {
+                return -((rho+y[0])*( (2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0] ))/(x*2.0*(1.0 - (2.0*y[2])/(x))); 
+            }
             break;
         }
         case 1: {
-            return ((2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0])/(x*(1.0 - (2.0*y[2])/(x)));
+            if (x == 0.0) {
+                return 0;
+            } else {
+                return ((2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0])/(x*(1.0 - (2.0*y[2])/(x)));
+            }
             break;
         }
         case 2: {
-            return 4*M_PI*x*x;
+            if (x == 0.0) {
+                return 0;
+            } else {
+                return 4*M_PI*x*x*rho;
+            }
             break;
         }
         case 3: {
-            return (y[3])/(x*sqrt(1.0-(2.0*y[2])/x));
+             //if (x <= 0.0001) {
+            if( x == 0 ) {
+                //return 1.0/sqrt(1.0 - 8.0*M_PI*rho*x*x);
+                return 1;
+            } else {
+                return (y[3])/(x*sqrt(1.0-(2.0*y[2])/x));
+            }
             break;
         }
         // case...
@@ -70,7 +116,8 @@ double getInitialCondition (int n)
     //be sure to have these MATCH the equations in diffyQEval
     switch(n){
         case 0: {
-            return 0.016714611225000002; 
+            return 0.016714611225000002;
+            //return 1.671461121831567e-02; 
             break;
         }
         case 1: {
@@ -78,11 +125,13 @@ double getInitialCondition (int n)
             break;
         }
         case 2: {
-            return 6.115617413201306e-16;
+            return 0.0;
+            //return 6.115617413201306e-16;
             break;
         }
         case 3: {
-            return 6.998108874980957e-06;
+            return 0.0;
+            //return 6.998108874980957e-06;
             break;
         }
         // case...
@@ -118,16 +167,16 @@ int main()
     //double butcher[3][3] = {{0.0,0.0,0.0},{1.0,1.0,0.0},{2,0.5,0.5}};
     //RK2
 
-    //double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
+    double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
     //RK4
 
-    double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
+    /*double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
     {0.2,0.2,0.0,0.0,0.0,0.0,0.0},
     {0.3,3.0/40.0,9.0/40.0,0.0,0.0,0.0,0.0},
     {0.6,0.3,-9.0/10.0,1.2,0.0,0.0,0.0},
     {1.0,-11.0/54.0,2.5,-70.0/27.0,35.0/27.0,0.0,0.0},
     {7.0/8.0,1631.0/55296.0,175.0/512.0,575.0/13824.0,44275.0/110592.0,253.0/4096.0,0.0},
-    {5,37.0/378.0,0.0,250.0/621.0,125.0/594.0,0.0,512.0/1771.0}};
+    {5,37.0/378.0,0.0,250.0/621.0,125.0/594.0,0.0,512.0/1771.0}};*/
     //RK5 (Cash-Karp version)
 
     //How to get array size: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
@@ -136,10 +185,10 @@ int main()
     printf("Method Order: %i. \nOrder of Error should be near Method Order + 1.\n",(int)butcher[dimension-1][0]);
     printf("If not, try a larger step size, roundoff error may be interfering.\n");
 
-    double step = 0.001; //the "step" value.
-    double bound = 0.00000001; //where the boundary/initial condition is. Same for every equation in the system.
+    double step = 0.00001; //the "step" value.
+    double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 4; //How many equations are in our system?
-    const int SIZE = 2000; //How many steps we are going to take?
+    const int SIZE = 200000; //How many steps we are going to take?
     bool validate = false; //set to true if you wish to run a validation test.
     //Attempts to find the order of the method used. 
 
@@ -197,7 +246,9 @@ int main()
         printf("Equation %i:,\t%10.9e,\t",n, y1[n]);
         fprintf(fp, "Equation %i:,\t%10.9e,\t",n, y1[n]);
     }
+    printf("%10.9e\t", sqrt(y1[0]) + y1[0]);
     printf("\n");
+    fprintf(fp,"%10.9e\t", sqrt(y1[0]) + y1[0]);
     fprintf(fp,"\n");
 
     //Comma delimiters are printed to the file so it can be converted to .csv with ease. 
@@ -241,9 +292,10 @@ int main()
                 //we would use an undeclared K-value the butcher table would have zero.
                 //You know, just in case something goes wrong. 
             }
-
+            //diffyQEval(xInsert, yInsert);
             for (int n = 0; n < numberOfEquations; n++) {
-                K[j][n] = step*diffyQEval(xInsert,yInsert,n);
+                //K[j][n] = step*yInsert[n];
+                K[j][n] = step*diffyQEval(xInsert, yInsert, n);
                 //Actually calculate the K-values.
             } 
 
@@ -267,9 +319,10 @@ int main()
         fprintf(fp, "Position:,\t%f,\t",bound+(i+1)*step);
         for (int n = 0; n < numberOfEquations; n++) {
             //printf("Equation %i:,\t%10.9e,\t",n, y1[n]);
-            fprintf(fp, "Equation %i:,\t%10.9e,\t",n, y1[n]);
+            fprintf(fp, "Equation %i:,\t%10.9e,\t",n, y2[n]);
         }
         //printf("\n");
+        fprintf(fp,"%10.9e\t", sqrt(y2[0]) + y2[0]);
         fprintf(fp,"\n");
                 
         //validation: grab the first nonzero error, calculate its order.
