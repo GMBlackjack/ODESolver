@@ -1,83 +1,109 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <stdbool.h>
-#include <time.h> //we like to know how long things take. 
-//having not used time.h before we refered to
-//https://en.wikibooks.org/wiki/C_Programming/time.h
+#include "stdio.h"
+#include "stdlib.h"
+#include "math.h"
+#include "stdbool.h"
+#include "time.h"
 
-//Note: math.h requries the "-lm" arg be added at the END of tasks.json's arguments.
-//https://askubuntu.com/questions/332884/how-to-compile-a-c-program-that-uses-math-h
+void diffyQEval (double x, double y[], double c[])
+{
+    //Efficient(ish) Assignment Method
+    //This computes the values of the *derivatives* of the functions, so what we are passed
+    //in the array y[] is *not* the same thing as what we are calculating, be careful not to re-use
+    //outside of the function, because we are taking in the function itself and replacing it with its derivative. 
+    //This is somewhat counter-intuitive, but it is efficient. 
 
-//ODE Solver
-//By G. M. Steward
-//The main goal of this project is to solve Ordinary Differential Equation Systems
-//in complete generality. However, we will take a while to get there.
-//This fifth version seeks to allow the program to solve a system of ODEs, starting with a very simple one.
-//User functionality will (eventually) involve input of own equations, but we don't have that here yet, and it may be a while.
+    //This if statement is an example of a special condition, in this case at x=0 we have a divide by zero problem. 
+    //In this case we manually know what the derivatives should be.
+    //Alternatively, we could define piecewise equations this way. 
+    if(x == 0) {
+        y[0] = 0; 
+        y[1] = 0;
+        y[2] = 0;
+        y[3] = 1;
+    }
+    else {
+        double y0 = y[0]; //Pressure
+        double y1 = y[1]; //nu. Uncertain what this physically is, likely just a bookkeeping situation. 
+        double y2 = y[2]; //Total mass. 
+        double y3 = y[3]; //r-bar, the isotropic radius. NOT NORMALIZED. Must be normalized in post-processing. 
 
-//Heavily influenced by Numerical Mathematics and Computing 6E by Cheney and Kincaid.
+        //Note that we declare these buffer variables since we will need to use them multiple times, but we are also
+        //overwriting them in the original array, so we need buffers. 
+        y[0] = -((c[0]+y0)*( (2.0*y2)/(x) + 8.0*M_PI*x*x*y0 ))/(x*2.0*(1.0 - (2.0*y2)/(x)));
+        y[1] =  ((2.0*y2)/(x) + 8.0*M_PI*x*x*y0)/(x*(1.0 - (2.0*y2)/(x)));
+        y[2] = 4*M_PI*x*x*c[0];
+        y[3] = (y3)/(x*sqrt(1.0-(2.0*y2)/x));
+    }
+    //This funciton is not guaranteed to work in all cases. For instance, we have manually 
+    //made an exception for x=0, since evaluating at 0 produces infinities and NaNs. 
+    //Be sure to declare any exceptions before running, both here and in exceptionHandler(), depending 
+    //on the kind of exception desired.  
+}
 
-//Outside the program, we substantiate the differential equation itself.
+
+void getInitialCondition (double y[])
+{
+    //be sure to have these MATCH the equations in diffyQEval
+    y[0] = 0.016714611225000002; //Pressure
+    y[1] = 0.0; //nu
+    y[2] = 0.0; //mass
+    y[3] = 0.0; //r-bar
+}
+
+void constEval (double y[], double c[])
+{
+    //Sometimes we want to evaluate constants in the equation that change, but do not have derivative forms.
+    //Today, we do that for the total energy density. 
+    double c0 = c[0];
+    //Make sure to instantiate buffer values so you don't end up changing things when you don't want to!
+    //Not necessary here, but left in as a demonstration. 
+    c[0] = sqrt(y[0]) + y[0];
+    //The total energy density only depends on pressure. 
+}
+
+
+void knownQEval (double x, double y[])
+{
+    //This function is only used if there are known solutions. 
+    //Notably this is not the case for the TOV equations. 
+    //If you do put anything here, make SURE it has the same order as the differential equations. 
+    //In the case of TOV, that would be Pressure, nu, mass, and r-bar, in that order. 
+}
+
 
 void exceptionHandler (double x, double y[], double c[])
 {
     //This funciton might be empty. It's only used if the user wants to hard code some limitations 
     //On some varaibles.
-    //Good for avoding divide by zero errors, or going negative in a square root. 
+    //Good for avoding some divide by zero errors, or going negative in a square root. 
+    if (y[0] < 0) {
+        y[0] = 0;
+    }
+    //In this case, the TOV Equations, we need to make sure the pressure doesn't go negative.
+    //Physically, it cannot, but approximation methods can cross the P=0 line
+    //We just need a hard wall to prevent that. 
 }
+
 
 int doWeTerminate (double x, double y[], double c[])
 {
     //This funciton might be empty. It's only used if the user wants to have a special termination condition.
-    return 0;
+    //Today we do. We terminate once the pressure hits zero, or goes below it. 
+    if (y[0] <= 0.0) {
+        return 1;
+    } else {
+        return 0;
+    }
     //return 1 for termination.
 }
 
-void constEval (double y[], double c[])
-{
-    //none. 
-}
-void diffyQEval (double x, double y[], double c[])
-{
-    //Efficient(ish) Assignment Method
 
-        double y0 = y[0];
-        double y1 = y[1];
-        y[0] = y1;
-        y[1] = y0 + x;
+/*
+ * Complicated Example: TOV Solver With Basic Assumptions.
+ */
+int main() {
 
-    //This is the differential equation system itself. 
-    //By default we have a very simple y'' = y+x situation here, split up into
-    // y[0]' = y[1]
-    // y[1]' = y[0]+x
-    //Naturally other equaitons can be put in, but be sure to change the numberOfEquations value!
-    //Note: not guaranteed to work for functions that are not well-behaved. 
-}
-
-//This is the function to evaluate the known solution. Must be set manually.
-void knownQEval (double x, double y[])
-{
-    y[0] = exp(x) + exp(-x) - x;
-    y[1] = exp(x) - exp(-x) - 1;
-    //This function is only used if there are known solutions. 
-
-    //the known solution to the differential equaiton, specifically what we call y[0]
-    //used to measure relative errors. 
-    //Do note that this would change with different boundary conditions. 
-}
-
-void getInitialCondition (double y[])
-{
-    //be sure to have these MATCH the equations in diffyQEval
-    y[0] = 2.0;
-    y[1] = -1.0;
-}
-
-//Remember when adjusting these to adjust the boundary value bValue in main() as well. 
-
-int main()
-{
+double butcher[2][2] = {{0.0,0},{1.0,1.0}};
     printf("Beginning ODE Solver \"Odie\" V7...\n");
     
     //SECTION I: Preliminaries
@@ -87,43 +113,17 @@ int main()
 
     double step = 0.01; //the "step" value.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
-    int numberOfEquations = 2; //How many equations are in our system?
-    int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
+    int numberOfEquations = 4; //How many equations are in our system?
+    int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
     const int SIZE = 100; //How many steps we are going to take?
-    bool validate = true; //Set to true if you wish to run a validation test. Only works if solution is already known.
+    bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
-    //to be read differently. 
+    //to be read differently.
 
-    //Butcher Table: for now we define our method table here. 
-    //When run through the notebook this section is absent as it fills it itself. 
-    //Uncomment the method you wish to use. 
-    //double butcher[4][4] = {{0.0,0.0,0.0,0.0},{1.0,1.0,0.0,0.0},{0.5,0.25,0.25,0.0},{3,1.0/6.0,1.0/6.0,2.0/3.0}};
-    //This is the SSPRK3 method, chosen since it has a simple array but with less zeroes than other options. 
-    //Note that the "3" in the last row is the order, that slot is always empty on a butcher table. 
-    //If you wish for a different method, comment out the one above and initate one of the below:
-
-    //double butcher[2][2] = {{0.0,0.0},{1,1.0}};
-    //This is Euler's Method, good for test cases since it's easy to look at. 
-
-    //double butcher[3][3] = {{0.0,0.0,0.0},{1.0,1.0,0.0},{2,0.5,0.5}};
-    //RK2
-
-    double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
-    //RK4. This is the standard method in use. 
-
-    /*double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
-    {0.2,0.2,0.0,0.0,0.0,0.0,0.0},
-    {0.3,3.0/40.0,9.0/40.0,0.0,0.0,0.0,0.0},
-    {0.6,0.3,-9.0/10.0,1.2,0.0,0.0,0.0},
-    {1.0,-11.0/54.0,2.5,-70.0/27.0,35.0/27.0,0.0,0.0},
-    {7.0/8.0,1631.0/55296.0,175.0/512.0,575.0/13824.0,44275.0/110592.0,253.0/4096.0,0.0},
-    {5,37.0/378.0,0.0,250.0/621.0,125.0/594.0,0.0,512.0/1771.0}};*/
-    //RK5 (Cash-Karp version)
-
-    //How to get array size: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
+        //How to get array size: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
     size_t methodSize = sizeof(butcher)/sizeof(butcher[0][0]);
     int dimension = sqrt((int)methodSize);
     //We need to know how big our method is, especially if passed one we've never seen before. 
@@ -427,6 +427,6 @@ int main()
 
     printf("ODE Solver \"Odie\" V7 Shutting Down...\n");
     return 0;
-}
 
 // - GM, master of dogs.
+    }

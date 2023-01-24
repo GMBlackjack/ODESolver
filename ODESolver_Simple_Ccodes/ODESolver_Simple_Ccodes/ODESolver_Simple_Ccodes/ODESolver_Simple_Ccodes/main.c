@@ -1,24 +1,53 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <stdbool.h>
-#include <time.h> //we like to know how long things take. 
-//having not used time.h before we refered to
-//https://en.wikibooks.org/wiki/C_Programming/time.h
+#include "stdio.h"
+#include "stdlib.h"
+#include "math.h"
+#include "stdbool.h"
+#include "time.h"
 
-//Note: math.h requries the "-lm" arg be added at the END of tasks.json's arguments.
-//https://askubuntu.com/questions/332884/how-to-compile-a-c-program-that-uses-math-h
+void diffyQEval (double x, double y[], double c[])
+{
+    //Efficient(ish) Assignment Method
 
-//ODE Solver
-//By G. M. Steward
-//The main goal of this project is to solve Ordinary Differential Equation Systems
-//in complete generality. However, we will take a while to get there.
-//This fifth version seeks to allow the program to solve a system of ODEs, starting with a very simple one.
-//User functionality will (eventually) involve input of own equations, but we don't have that here yet, and it may be a while.
+        double y0 = y[0];
+        double y1 = y[1];
+        y[0] = y1;
+        y[1] = y0 + x;
 
-//Heavily influenced by Numerical Mathematics and Computing 6E by Cheney and Kincaid.
+    //This is the differential equation system itself. 
+    //We have a very simple y'' = y+x situation here, split up into
+    // y[0]' = y[1]
+    // y[1]' = y[0]+x
+    //Naturally other equaitons can be put in, but be sure to change the numberOfEquations value!
+    //Note: not guaranteed to work for functions that are not well-behaved. 
+}
 
-//Outside the program, we substantiate the differential equation itself.
+
+void getInitialCondition (double y[])
+{
+    //be sure to have these MATCH the equations in diffyQEval
+    y[0] = 2.0;
+    y[1] = -1.0;
+}
+
+
+void constEval (double y[], double c[])
+{
+    //none. 
+}
+
+
+void knownQEval (double x, double y[])
+{
+    y[0] = exp(x) + exp(-x) - x;
+    y[1] = exp(x) - exp(-x) - 1;
+    //This function is only used if there are known solutions. 
+
+    //the known solution to the differential equaiton, specifically what we call y[0]
+    //used to measure relative errors. 
+    //Do note that this would change with different boundary conditions. 
+}
+
+
 
 void exceptionHandler (double x, double y[], double c[])
 {
@@ -34,50 +63,12 @@ int doWeTerminate (double x, double y[], double c[])
     //return 1 for termination.
 }
 
-void constEval (double y[], double c[])
-{
-    //none. 
-}
-void diffyQEval (double x, double y[], double c[])
-{
-    //Efficient(ish) Assignment Method
+/*
+ * Fill out later
+ */
+int main() {
 
-        double y0 = y[0];
-        double y1 = y[1];
-        y[0] = y1;
-        y[1] = y0 + x;
-
-    //This is the differential equation system itself. 
-    //By default we have a very simple y'' = y+x situation here, split up into
-    // y[0]' = y[1]
-    // y[1]' = y[0]+x
-    //Naturally other equaitons can be put in, but be sure to change the numberOfEquations value!
-    //Note: not guaranteed to work for functions that are not well-behaved. 
-}
-
-//This is the function to evaluate the known solution. Must be set manually.
-void knownQEval (double x, double y[])
-{
-    y[0] = exp(x) + exp(-x) - x;
-    y[1] = exp(x) - exp(-x) - 1;
-    //This function is only used if there are known solutions. 
-
-    //the known solution to the differential equaiton, specifically what we call y[0]
-    //used to measure relative errors. 
-    //Do note that this would change with different boundary conditions. 
-}
-
-void getInitialCondition (double y[])
-{
-    //be sure to have these MATCH the equations in diffyQEval
-    y[0] = 2.0;
-    y[1] = -1.0;
-}
-
-//Remember when adjusting these to adjust the boundary value bValue in main() as well. 
-
-int main()
-{
+double butcher[14][14] = {{0.0,0,0,0,0,0,0,0,0,0,0,0,0,0},{0.05555555555555555,0.05555555555555555,0,0,0,0,0,0,0,0,0,0,0,0},{0.08333333333333333,0.020833333333333332,0.0625,0,0,0,0,0,0,0,0,0,0,0},{0.125,0.03125,0.0,0.09375,0,0,0,0,0,0,0,0,0,0},{0.3125,0.3125,0.0,-1.171875,1.171875,0,0,0,0,0,0,0,0,0},{0.375,0.0375,0.0,0.0,0.1875,0.15,0,0,0,0,0,0,0,0},{0.1475,0.04791013711111111,0.0,0.0,0.11224871277777777,-0.02550567377777778,0.012846823888888888,0,0,0,0,0,0,0},{0.465,0.01691798978729228,0.0,0.0,0.3878482784860432,0.03597736985150033,0.19697021421566607,-0.17271385234050185,0,0,0,0,0,0},{0.5648654513822595,0.0690957533591923,0.0,0.0,-0.6342479767288541,-0.16119757522460407,0.13865030945882525,0.9409286140357562,0.21163632648194397,0,0,0,0,0},{0.65,0.1835569968390454,0.0,0.0,-2.4687680843155926,-0.29128688781630047,-0.026473020233117376,2.8478387641928005,0.2813873314698498,0.12374489986331466,0,0,0,0},{0.9246562776405044,-1.2154248173958881,0.0,0.0,16.672608665945774,0.915741828416818,-6.056605804357471,-16.00357359415618,14.849303086297663,-13.371575735289849,5.134182648179638,0,0,0},{1.0,0.25886091643826425,0.0,0.0,-4.774485785489205,-0.4350930137770325,-3.0494833320722416,5.5779200399360995,6.15583158986104,-5.062104586736939,2.193926173180679,0.13462799865933495,0,0},{1.0,0.8224275996265075,0.0,0.0,-11.658673257277664,-0.7576221166909362,0.7139735881595816,12.075774986890057,-2.127659113920403,1.9901662070489554,-0.23428647154404028,0.17589857770794226,0.0,0},{8.0,0.041747491141530244,0.0,0.0,0.0,0.0,-0.05545232861123931,0.2393128072011801,0.703510669403443,-0.7597596138144609,0.6605630309222863,0.15818748251012332,-0.2381095387528628,0.25}};
     printf("Beginning ODE Solver \"Odie\" V7...\n");
     
     //SECTION I: Preliminaries
@@ -85,45 +76,19 @@ int main()
     //and set, as well as the functions chosen. 
     //The system of differential equations can be found declared in diffyQEval().
 
-    double step = 0.01; //the "step" value.
+    double step = 0.05; //the "step" value.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 2; //How many equations are in our system?
     int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 100; //How many steps we are going to take?
+    const int SIZE = 20; //How many steps we are going to take?
     bool validate = true; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
-    //to be read differently. 
+    //to be read differently.
 
-    //Butcher Table: for now we define our method table here. 
-    //When run through the notebook this section is absent as it fills it itself. 
-    //Uncomment the method you wish to use. 
-    //double butcher[4][4] = {{0.0,0.0,0.0,0.0},{1.0,1.0,0.0,0.0},{0.5,0.25,0.25,0.0},{3,1.0/6.0,1.0/6.0,2.0/3.0}};
-    //This is the SSPRK3 method, chosen since it has a simple array but with less zeroes than other options. 
-    //Note that the "3" in the last row is the order, that slot is always empty on a butcher table. 
-    //If you wish for a different method, comment out the one above and initate one of the below:
-
-    //double butcher[2][2] = {{0.0,0.0},{1,1.0}};
-    //This is Euler's Method, good for test cases since it's easy to look at. 
-
-    //double butcher[3][3] = {{0.0,0.0,0.0},{1.0,1.0,0.0},{2,0.5,0.5}};
-    //RK2
-
-    double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
-    //RK4. This is the standard method in use. 
-
-    /*double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
-    {0.2,0.2,0.0,0.0,0.0,0.0,0.0},
-    {0.3,3.0/40.0,9.0/40.0,0.0,0.0,0.0,0.0},
-    {0.6,0.3,-9.0/10.0,1.2,0.0,0.0,0.0},
-    {1.0,-11.0/54.0,2.5,-70.0/27.0,35.0/27.0,0.0,0.0},
-    {7.0/8.0,1631.0/55296.0,175.0/512.0,575.0/13824.0,44275.0/110592.0,253.0/4096.0,0.0},
-    {5,37.0/378.0,0.0,250.0/621.0,125.0/594.0,0.0,512.0/1771.0}};*/
-    //RK5 (Cash-Karp version)
-
-    //How to get array size: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
+        //How to get array size: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
     size_t methodSize = sizeof(butcher)/sizeof(butcher[0][0]);
     int dimension = sqrt((int)methodSize);
     //We need to know how big our method is, especially if passed one we've never seen before. 
@@ -427,6 +392,6 @@ int main()
 
     printf("ODE Solver \"Odie\" V7 Shutting Down...\n");
     return 0;
-}
 
 // - GM, master of dogs.
+    }

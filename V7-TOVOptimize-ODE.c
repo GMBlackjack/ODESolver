@@ -422,7 +422,7 @@ int main()
                 }
                 //Note: this will not produce an integer, but with proper data it will be close to an integer
                 //and the validation would be performed by rounding. 
-Before                //However one can also get errors if the results are too exact, roundoff error can ruin the calcluation. 
+                //However one can also get errors if the results are too exact, roundoff error can ruin the calcluation. 
                 //Using larger step sizes usually removes that. 
             }
         
