@@ -74,7 +74,7 @@ double butcher[2][2] = {{0.0,0},{1.0,1.0}};
     //The system of differential equations can be found declared in diffyQEval().
 
     double step = 0.05; //the "step" value.
-    double bound = true; //where the boundary/initial condition is. Same for every equation in the system.
+    double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 2; //How many equations are in our system?
     int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
@@ -120,7 +120,7 @@ double butcher[2][2] = {{0.0,0},{1.0,1.0}};
 
     //also open the file we'll be writing data to. 
     FILE *fp;
-    fp = fopen("oData.txt","w");
+    fp = fopen("oSData.txt","w");
 
     //First though, let's print out our initial data. The print function needs to be adaptable to any size of data. 
     //We can do this with multiple print functions and just not adding the newline character until we're done.
