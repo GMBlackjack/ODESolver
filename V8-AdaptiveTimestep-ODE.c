@@ -136,6 +136,15 @@ int main()
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
     //to be read differently. 
 
+    //ERROR PARAMETERS: Use these to set limits on the erorr. 
+    double absoluteErrorLimit = 0.00001; //how big do we let the absolute error be?
+    double relativeErrorLimit = 0.0; //how big do we let the relative error be?
+    double ayErrorScaler = 1.0; //For giving extra weight to the functions themselves.
+    double adyErrorScaler = 1.0;  //For giving extra weight to the derivatives. 
+    //Note: the function for determining error creates a combined tester, it doesn't do either/or absolute or relative.
+    //So its' best to eitehr cap absolute or relative error, not both. 
+    //Constants should be set to 1 unless you know what you're dong, which I don't.
+
     //Butcher Table: for now we define our method table here. 
     //When run through the notebook this section is absent as it fills it itself. 
     //Uncomment the method you wish to use. 
@@ -181,6 +190,9 @@ int main()
     //y is the values of the actual equations. 
     //c is just used to hold any constants we wish to report. 
     //Each array only holds values at one evaluation point, but one for each Equation.
+
+    double currentPosition = bound;
+    //since we adjust the step size it is not possible to algorithmically determine our position. 
 
     //This here sets the initial conditions as declared in getInitialCondition()
     getInitialCondition(y); 
@@ -250,20 +262,26 @@ int main()
         //One could argue that since the small steps will become our result, however we are actually
         //NOT going to assign them to the actual answer y until we compare and run the adaptive
         //time-step algorithm. We might throw out all the data and need to run it again! 
-
-        //All of these start thinking they are the values from the previous step or initial conditions.  
-        for (int n = 0; n < numberOfEquations; n++) {
-            yBigStep[n] = y[n];
-            ySmolSteps[n] = y[n];
-        } 
-        for (int n = 0; n < numberOfConstants; n++) {
-            cBigStep[n] = c[n];
-            cSmolSteps[n] = c[n];
-        } 
+        double errorEstimate[numberOfEquations+numberOfConstants];
+        //even if we aren't limiting the constants, we can still report their error. 
         
+        double originalStep = step;
+        //We need to be able to refer to the ordinary step so we can see if we're adjusting it too much at once. 
+
         //We rather explicitly do not actually take any steps until we confirm the error is below what we want.
         bool errorSatisfactory = false;
         while (errorSatisfactory == false) {
+            
+            //All of these start thinking they are the values from the previous step or initial conditions. 
+            //We must reset them every time we return here.  
+            for (int n = 0; n < numberOfEquations; n++) {
+                yBigStep[n] = y[n];
+                ySmolSteps[n] = y[n];
+            } 
+            for (int n = 0; n < numberOfConstants; n++) {
+                cBigStep[n] = c[n];
+                cSmolSteps[n] = c[n];
+            } 
             for (int iteration = 1; iteration < 4; iteration++) {
                 //So, we want to use Adaptive Timestep methodology. This will involve evaluating each step three times, 
                 //In order to compare the evolution of two different step sizes and get an error estimate. 
@@ -275,7 +293,7 @@ int main()
 
                 double scale = 1.0;
                 //this is the number we use to scale. It's either 1 or 1/2, depending on what size step we want. 
-                int shift = 0;
+                int shift = 0.0;
                 //this is the number we set if we want to shift where we are evaluating from. 
                 if (iteration == 1.0) {
                     //scale remains 1
@@ -315,7 +333,8 @@ int main()
 
                 for (int j = 1; j < dimension; j++) {
                     //Due to the way the Butcher Table is formatted, start our index at 1 and stop at the end. 
-                    double xInsert = bound+(i+shift)*step*scale + butcher[j-1][0]*step*scale;
+                    double xInsert = currentPosition+shift*step*scale + butcher[j-1][0]*step*scale;
+                    //
                     //x does not change much for different tables, just adjust the "step correction" term.
                     //x is the same for every equation too.
 
@@ -355,7 +374,7 @@ int main()
 
                 //Now that we have all the K-values set, we need to find the actual result in one final loop.
                 for (int n = 0; n< numberOfEquations; n++) {
-                    K[0][n] = y[n]; //The 0th spot in the K-values is reserved for holding the 
+                    K[0][n] = ySmolSteps[n]; //The 0th spot in the K-values is reserved for holding the 
                     //final value while it's being calculated. 
                     for (int j = 1; j < dimension; j++) {
                         K[0][n] = K[0][n] + butcher[dimension-1][j]*K[j][n]; 
@@ -371,7 +390,7 @@ int main()
                 //Note that we specifically set ySmol to the value, not anything else. 
                 //This is because we wish to avoid abusing if statements and would like to do the following only once.
 
-                exceptionHandler(bound+i*step*scale,ySmolSteps,cSmolSteps);
+                exceptionHandler(currentPosition+(1.0+shift)*step*scale,ySmolSteps,cSmolSteps);
                 constEval(ySmolSteps,cSmolSteps); 
 
                 if (i == 0) {
@@ -396,13 +415,109 @@ int main()
                 //This odd structure exists purely for efficiency. 
                 
             }
+            //Now that the step and double step have been taken, time to calculate some errors and see if we move 
+            //on to the next step. 
 
-            errorSatisfactory = true;
-            //to keep the loop from going to infinity while testing. 
+            //First, from our parameters declared at the beginning, determine what our error limit is. 
+            //Using GSL's version...
+
+            for (int n = 0; n<numberOfEquations; n++) {
+                errorEstimate[n] = sqrt((yBigStep[n] - ySmolSteps[n])*(yBigStep[n] - ySmolSteps[n]));
+            }
+            for (int n = 0; n<numberOfConstants; n++) {
+                errorEstimate[n+numberOfEquations] = sqrt((cBigStep[n] - cSmolSteps[n])*(cBigStep[n] - cSmolSteps[n]));
+                //We can store the constant errors here just fine. 
+            }
+
+            double errorLimiter[numberOfEquations];
+            //since the definition of the error limiter uses a derivative, we cannot use it to limit the constant's error. 
+            //The errorLimiter depends on the derivatives of functions, but we currently don't have an array to store those values.
+            //Rather than declaring a new array, we can use errorLimiter to store the values. 
+
+            for (int n = 0; n<numberOfEquations; n++) {
+                errorLimiter[n] = ySmolSteps[n];
+            }
+            diffyQEval(currentPosition+step,errorLimiter, cSmolSteps);
+            //the error limiter can now be used to set its own values. 
+
+            for (int n = 0; n<numberOfEquations; n++) {
+                errorLimiter[n] = absoluteErrorLimit + relativeErrorLimit*(ayErrorScaler*sqrt(cSmolSteps[n]*cSmolSteps[n]) + adyErrorScaler*sqrt(errorLimiter[n]*errorLimiter[n]));
+                if (i == 0) {
+                               
+                }
+                //printf("Error Limiter %i:,\t%10.9e,\t\n",n, errorLimiter[n]);
+                //printf("Error %i:,\t%10.9e,\t\n",n, errorEstimate[n]);
+                //printf("Ratio %i:,\t%10.9e,\t\n",n, errorEstimate[n]/errorLimiter[n]);  
+            }
+            
+
+
+            //Now the error limiter is set for every equation. Now we need to perform checks.
+            bool underError = false;
+            bool overError = false;
+
+            double ratioED = 0.0;
+            for (int n = 0; n<numberOfEquations; n++) { 
+                if (ratioED < errorEstimate[n]/errorLimiter[n]) {
+                    ratioED = errorEstimate[n]/errorLimiter[n];
+                    
+                    //pick out the largest of these ratios for use, every time. 
+                }
+                printf(" %10.9e", errorEstimate[n]/errorLimiter[n]);
+            }
+            printf("\n");
+
+            //these will be set to true when the condition is tripped. 
+            if (ratioED >  1.1) {
+                //If we are 10% over what the error we want is, adjust. 
+                overError = true;
+            } else if (ratioED < 0.5) {
+                //If we are 50% under what the error we want is, adjust. 
+                underError = true;
+            }
+
+            // Now if we have no problems at all..
+            if (underError == false && overError == false) {
+                errorSatisfactory = true;
+                printf("PROGRESS %10.9e\n", ratioED);
+            }
+            //say that we're cleared to move to the next step. However, if one of them was triggered, we need to adjust. 
+            //in these cases we change the actual step size. 
+            //It is theoretically possible for both to be triggered on different equations. In that case, overError
+            //takes prescedent. We would rather have more accuracy than less in odd situations like that. 
+
+            else if (overError == true) {
+                step = step * 0.9 * pow(ratioED,-1.0/butcher[dimension-1][0]);
+                printf("LOWER %10.9e\n", ratioED);
+            } else { //if underError is true and overError is false is the only way to get here. The true-true situation is skipped.
+                step = step * 0.9 * pow(ratioED,-1.0/(butcher[dimension-1][0]+1));
+                printf("UPPER %10.9e\n", ratioED);
+            }
+
+            //Check to see if we're adjusting the step too much at once. 
+            //If we are, declare that we're done. 
+            if (step > 5 * originalStep) {
+                step = 5 * originalStep;
+                errorSatisfactory = true;
+            } else if (step < 0.2 * originalStep){
+                step = 0.2 * originalStep;
+                errorSatisfactory = true;
+            }
+
+            printf("%i, %10.9e\n",i, step);
+            //With that, the step size has been changed. Since errorSatisfactory should be false, it goes back and performs everything again
+            //with the new step size. 
         }
+        
+        for (int n = 0; n<numberOfEquations; n++) {
+            y[n]=ySmolSteps[n];
+        }
+        currentPosition = currentPosition + step;
+        //Once the step has finally been decided, update where we are. 
+        
             
                  
-                double K[dimension][numberOfEquations];
+                /*double K[dimension][numberOfEquations];
                 //These are the K-values that are required to evaluate RK-like methods. 
                 //They will be determined based on the provided butcher table.
                 //This is a 2D matrix since each diffyQ has its own set of K-values. 
@@ -553,7 +668,7 @@ int main()
                                     for (int q = 0; q < numberOfEquations; q++) {
                                         yInsertBuffer[q] = yInsertBuffer[q] + butcher[j-1][n]*K[n][q];
                                     }
-                                }
+                                }errorSatisfactory = true;
 
                                 exceptionHandler(xInsert,yInsertBuffer,cInsert);
 
@@ -602,11 +717,11 @@ int main()
                     fprintf(fp,"\n");
 
                     //Note that error printed is not relative error, but simple difference error. 
-                }
+                } */
 
         //And the very last thing we do in the loop is ask if we terminate it. 
         if (doWeTerminate(bound+i*step, y, c) == 1) {
-            i = SIZE;
+            //i = SIZE;
         }
     }
 
