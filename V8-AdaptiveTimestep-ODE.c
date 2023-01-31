@@ -37,7 +37,7 @@ int doWeTerminate (double x, double y[], double c[])
 {
     //This funciton might be empty. It's only used if the user wants to have a special termination condition.
     //Today we do. We terminate once the pressure hits zero, or goes below it. 
-    if (y[0] <= 0.0) {
+    if (y[0] <= 1e-15) {
         return 1;
     } else {
         return 0;
@@ -130,15 +130,15 @@ int main()
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 100000; //How many steps we are going to take?
+    const int SIZE = 1000000; //How many steps we are going to take?
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
     //to be read differently. 
 
     //ERROR PARAMETERS: Use these to set limits on the erorr. 
-    double absoluteErrorLimit = 0.0000000000000001; //how big do we let the absolute error be?
-    double relativeErrorLimit = 0.0000000000000001; //how big do we let the relative error be?
+    double absoluteErrorLimit = 0.00000000000001; //how big do we let the absolute error be?
+    double relativeErrorLimit = 0.00000000000001; //how big do we let the relative error be?
     double ayErrorScaler = 1.0; //For giving extra weight to the functions themselves.
     double adyErrorScaler = 1.0;  //For giving extra weight to the derivatives. 
     //Note: the function for determining error creates a combined tester, it doesn't do either/or absolute or relative.
@@ -270,6 +270,10 @@ int main()
 
         //We rather explicitly do not actually take any steps until we confirm the error is below what we want.
         bool errorSatisfactory = false;
+        bool underError = false;
+        bool overError = false;
+        //It's important to declare these outside the errorSatisfactory loop since to update the stepper we need to know
+        //exactly what kind of step change we just did. 
         while (errorSatisfactory == false) {
             
             //All of these start thinking they are the values from the previous step or initial conditions. 
@@ -417,7 +421,6 @@ int main()
             }
             //Now that the step and double step have been taken, time to calculate some errors and see if we move 
             //on to the next step. 
-
             //First, from our parameters declared at the beginning, determine what our error limit is. 
             //Using GSL's version...
             if (i != 0) {
@@ -455,8 +458,6 @@ int main()
 
 
                 //Now the error limiter is set for every equation. Now we need to perform checks.
-                bool underError = false;
-                bool overError = false;
 
                 double ratioED = 0.0;
                 for (int n = 0; n<numberOfEquations; n++) { 
@@ -466,6 +467,10 @@ int main()
                         //pick out the largest of these ratios for use, every time. 
                     }
                 }
+
+                underError = false;
+                overError = false;
+                //make sure to set our values to false every loop. 
 
                 //these will be set to true when the condition is tripped. 
                 if (ratioED >  1.1) {
@@ -477,6 +482,18 @@ int main()
                 }
 
                 // Now if we have no problems at all..
+                /* if (currentPosition >= 0.95) {
+                    double yAnotherOne[numberOfEquations];
+                    for (int n = 0; n<numberOfEquations; n++) {
+                        yAnotherOne[n]=y[n];
+                    }
+                    diffyQEval(currentPosition, yAnotherOne,cSmolSteps);
+                    step = 0.1 * sqrt((y[0]/yAnotherOne[0])*(y[0]/yAnotherOne[0]));
+                    printf("%10.9e \n", step);
+                    errorSatisfactory = true;
+                    underError = false;
+                } */
+
                 if (underError == false && overError == false) {
                     errorSatisfactory = true;
                 }
@@ -487,21 +504,35 @@ int main()
 
                 else if (overError == true) {
                     step = step * 0.9 * pow(ratioED,-1.0/butcher[dimension-1][0]);
+                    printf("LOWER,%i %10.9e %10.9e %10.9e\n",i,currentPosition, step, ratioED);
+                    //errorSatisfactory = true;
+                    //Only uncomment this ErrorSatisfactory if trying to initiate non-adpative timestep. 
                 } else { //if underError is true and overError is false is the only way to get here. The true-true situation is skipped.
                     step = step * 0.9 * pow(ratioED,-1.0/(butcher[dimension-1][0]+1));
                     errorSatisfactory = true;
+                    printf("UPPER,%i %10.9e %10.9e %10.9e\n",i,currentPosition, step, ratioED);
                     //If we increase the step size, why throw away the better data we already calculated?
                 }
 
                 //Check to see if we're adjusting the step too much at once. 
                 //If we are, declare that we're done. 
-                /*if (step > 5 * originalStep) {
+                if (step > 5 * originalStep) {
                     step = 5 * originalStep;
                     errorSatisfactory = true;
                 } else if (step < 0.2 * originalStep){
                     step = 0.2 * originalStep;
                     errorSatisfactory = true;
-                }*/
+                }
+
+                //We also declare some minium and maximum step conditions. 
+                if (step > 0.1) {
+                    step = 0.1;
+                    errorSatisfactory = true;
+                } else if (step < 1e-7){
+                    step = 1e-7;
+                    errorSatisfactory = true;
+                }
+
                 //With that, the step size has been changed. If errorSatisfactory should be false, it goes back and performs everything again
                 //with the new step size. 
             } else {
@@ -513,22 +544,30 @@ int main()
         for (int n = 0; n<numberOfEquations; n++) {
             y[n]=ySmolSteps[n];
         }
-        currentPosition = currentPosition + step;
+
+        if (underError == true) {
+            currentPosition = currentPosition + originalStep;
+            //if we had an underflow and increased the step size, well, we kept the older points so we use that to update our current location.
+        } else {
+            currentPosition = currentPosition + step;
+            //in any other case we use the new step. Even the case where the step wasn't actually changed. 
+        }
+
 
         //Once the step has finally been decided, update where we are. 
 
         //After each step is calculated, print results. 
                 //However, prior to printing we need to run our exception and constant evaluators one more time. 
-                exceptionHandler(bound+i*step,y,c);
+                exceptionHandler(currentPosition,y,c);
                 constEval(y,c);
                 //Since we've usually been running them on yInsert, the actual y and c values have not generally seen 
                 //the restrictions applied here. 
 
                 //Uncomment for live updates.
-                //printf(fp, "Position:,\t%f,\t",currentPosition);
+                //printf("Position:,\t%10.9e,\t",currentPosition);
                 fprintf(fp, "Position:,\t%10.9e,\t",currentPosition);
                 for (int n = 0; n < numberOfEquations; n++) {
-                    //printf("Equation %i:,\t%10.9e,\t",n, y1[n]);
+                    //printf("Equation %i:,\t%10.9e,\t",n, y[n]);
                     fprintf(fp, "Equation %i:,\t%10.9e,\t",n, y[n]);
                 }
                 for (int n = 0; n < numberOfConstants; n++) {
