@@ -40,7 +40,7 @@ int doWeTerminate (double x, double y[], double c[])
 {
     //This funciton might be empty. It's only used if the user wants to have a special termination condition.
     //Today we do. We terminate once the pressure hits zero, or goes below it. 
-    if (y[0] == 0) {
+    if (y[0] < 1e-16) {
         return 1;
     } else {
         return 0;
@@ -90,7 +90,7 @@ void diffyQEval (double x, double y[], double c[])
         y[3] = (y3)/(x*sqrt(1.0-(2.0*y2)/x));
     }
     //This funciton is not guaranteed to work in all cases. For instance, we have manually 
-    //made an exception for x=0, since evaluating at 0 produces infinities and NaNs. 
+    //made an exception for xdouble butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};=0, since evaluating at 0 produces infinities and NaNs. 
     //Be sure to declare any exceptions before running, both here and in exceptionHandler(), depending 
     //on the kind of exception desired.  
 }
@@ -144,8 +144,8 @@ int main()
     //enable to have the actual errors reported. Produces junk data if there is no declared known function. 
 
     //ERROR PARAMETERS: Use these to set limits on the erorr. 
-    double absoluteErrorLimit = 0.000000000000001; //how big do we let the absolute error be?
-    double relativeErrorLimit = 0.000000000000001; //how big do we let the relative error be?
+    double absoluteErrorLimit = 1e-15; //how big do we let the absolute error be?
+    double relativeErrorLimit = 1e-15; //how big do we let the relative error be?
     double ayErrorScaler = 1.0; //For giving extra weight to the functions themselves.
     double adyErrorScaler = 1.0;  //For giving extra weight to the derivatives. 
     //Note: the function for determining error creates a combined tester, it doesn't do either/or absolute or relative.
@@ -155,12 +155,16 @@ int main()
     //adaptive timestep constraints
     //We allow for some truly adaptable control to how the adaptive timestep works. All the paramaters can be adjusted. 
     double scaleFactor = 0.9; //a general scaling factor that keeps the step size from "freaking out." 0.9 by defaut. 
+    double errorSafety = 8.0/15.0; //A mysterious factor GSL uses to try to estimate the error. 
+    // 4.0/15.0 by default. Not sure where it comes from. 
     double errorUpperTolerance = 1.1; //if the error ratio is larger than this, lower the step size. 1.1 (10% over) by default.
     double errorLowerTolerance = 0.5; //if the error ratio is lower than this, raise the step size. 0.5 (50% under) by default. 
     double maxStepAdjustment = 5.0; //the largest single adjustment that can be made to the step size. 5 default. 
-    double minStepAdjustment = 0.2; //the minimum single adjustment that can be made to the step size. 1/5 default. 
-    double absoluteMaxStep = 0.1; //An absolute cap on the step size, 0.1 by default. 
+    double minStepAdjustment = 0.02; //the minimum single adjustment that can be made to the step size. 1/5 default. 
+    double absoluteMaxStep = 0.001; //An absolute cap on the step size, 0.1 by default. 
     double absoluteMinStep = 1e-10; //An absolute floor on the step size, 1e-10 by default. 
+
+    double butcher[3][3] = {{0.0,0,0},{0.5,0.5,0},{2.0,0.0,1.0}};
 
     //Butcher Table: for now we define our method table here. 
     //When run through the notebook this section is absent as it fills it itself. 
@@ -169,14 +173,14 @@ int main()
     //This is the SSPRK3 method, chosen since it has a simple array but with less zeroes than other options. 
     //Note that the "3" in the last row is the order, that slot is always empty on a butcher table. 
     //If you wish for a different method, comment out the one above and initate one of the below:
-
+    
     //double butcher[2][2] = {{0.0,0.0},{1,1.0}};
     //This is Euler's Method, good for test cases since it's easy to look at. 
 
     //double butcher[3][3] = {{0.0,0.0,0.0},{1.0,1.0,0.0},{2,0.5,0.5}};
     //RK2
 
-    double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
+    //double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
     //RK4. This is the standard method in use. 
 
     /*double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
@@ -424,7 +428,6 @@ int main()
                 }
                 //Note that we specifically set ySmol to the value, not anything else. 
                 //This is because we wish to avoid abusing if statements and would like to do the following only once.
-
                 exceptionHandler(currentPosition+(1.0+shift)*step*scale,ySmolSteps,cSmolSteps);
                 constEval(currentPosition+(1.0+shift)*step*scale,ySmolSteps,cSmolSteps); 
                 //Check for exceptions and evaluate constants. 
@@ -473,11 +476,11 @@ int main()
             //Using GSL's version we frist estimate our errro based on what we know.
             if (i != 0) {
                 for (int n = 0; n<numberOfEquations; n++) {
-                    errorEstimate[n] = sqrt((yBigStep[n] - ySmolSteps[n])*(yBigStep[n] - ySmolSteps[n]))* (4.0/15.0);
+                    errorEstimate[n] = sqrt((yBigStep[n] - ySmolSteps[n])*(yBigStep[n] - ySmolSteps[n]))* errorSafety;
                     //The 4/15 is taken from GSL's solver, a 'saftey factor' with unknown reasoning. 
                 }
                 for (int n = 0; n<numberOfConstants; n++) {
-                    errorEstimate[n+numberOfEquations] = sqrt((cBigStep[n] - cSmolSteps[n])*(cBigStep[n] - cSmolSteps[n]))*(4.0/15.0);
+                    errorEstimate[n+numberOfEquations] = sqrt((cBigStep[n] - cSmolSteps[n])*(cBigStep[n] - cSmolSteps[n]))*errorSafety;
                     //We can store the constant errors here just fine. 
                 }
 
@@ -579,7 +582,7 @@ int main()
         }
 
         //After each step is calculated, print results. 
-        //However, prior to printing we need to run our exception and constant evaluators one more time. 
+        //However, prior to printing we need to run our exception and constant evaluators one more time.
         exceptionHandler(currentPosition,y,c);
         constEval(currentPosition, y,c);
         //Since we've usually been running them on yInsert, the actual y and c values have not generally seen 
@@ -629,6 +632,8 @@ int main()
             //printf("\n");
             fprintf(fp,"\n");
         }
+
+
 
         //And the very last thing we do in the loop is ask if we terminate it. 
         if (doWeTerminate(currentPosition, y, c) == 1) {
