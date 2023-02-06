@@ -155,16 +155,17 @@ int main()
     //adaptive timestep constraints
     //We allow for some truly adaptable control to how the adaptive timestep works. All the paramaters can be adjusted. 
     double scaleFactor = 0.9; //a general scaling factor that keeps the step size from "freaking out." 0.9 by defaut. 
-    double errorSafety = 8.0/15.0; //A mysterious factor GSL uses to try to estimate the error. 
+    double errorSafety = 4.0/15.0; //A mysterious factor GSL uses to try to estimate the error. 
     // 4.0/15.0 by default. Not sure where it comes from. 
     double errorUpperTolerance = 1.1; //if the error ratio is larger than this, lower the step size. 1.1 (10% over) by default.
     double errorLowerTolerance = 0.5; //if the error ratio is lower than this, raise the step size. 0.5 (50% under) by default. 
     double maxStepAdjustment = 5.0; //the largest single adjustment that can be made to the step size. 5 default. 
-    double minStepAdjustment = 0.02; //the minimum single adjustment that can be made to the step size. 1/5 default. 
-    double absoluteMaxStep = 0.001; //An absolute cap on the step size, 0.1 by default. 
+    double minStepAdjustment = 0.2; //the minimum single adjustment that can be made to the step size. 1/5 default. 
+    double absoluteMaxStep = 0.1; //An absolute cap on the step size, 0.1 by default. 
     double absoluteMinStep = 1e-10; //An absolute floor on the step size, 1e-10 by default. 
 
-    double butcher[3][3] = {{0.0,0,0},{0.5,0.5,0},{2.0,0.0,1.0}};
+    double butcher[5][5] = {{0.0,0,0,0,0},{0.5,0.5,0,0,0},{0.5,0.0,0.5,0,0},{1.0,0.0,0.0,1.0,0},{4.0,0.16666666666666666,0.3333333333333333,0.3333333333333333,0.16666666666666666}};
+
 
     //Butcher Table: for now we define our method table here. 
     //When run through the notebook this section is absent as it fills it itself. 
