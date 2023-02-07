@@ -1,8 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <stdbool.h>
-#include "nrpy_odiegm.h"
+//#include "nrpy_odiegm.h"
+#include "butcher.c"
 //TODO:
 //GSL Functionality
 //Jupyter notebook Adjusents. 
@@ -182,36 +179,29 @@ int main()
     //This is the system of equations we solve.
     //Second null should point to constants. 
 
-    //Butcher Table: for now we define our method table here. 
-    //When run through the notebook this section is absent as it fills it itself. 
-    //Uncomment the method you wish to use. 
-    //double butcher[4][4] = {{0.0,0.0,0.0,0.0},{1.0,1.0,0.0,0.0},{0.5,0.25,0.25,0.0},{3,1.0/6.0,1.0/6.0,2.0/3.0}};
-    //This is the SSPRK3 method, chosen since it has a simple array but with less zeroes than other options. 
-    //Note that the "3" in the last row is the order, that slot is always empty on a butcher table. 
-    //If you wish for a different method, comment out the one above and initate one of the below:
-    
-    //double butcher[2][2] = {{0.0,0.0},{1,1.0}};
-    //This is Euler's Method, good for test cases since it's easy to look at. 
+    //Now we set up the method. This is definitely a very roundabout way to do it,
+    //And for now all the pointer nonsense is immediately undone, but here it is. 
+    //All the butcher tables themselves are defined in butcher.c. 
+    //We just need to create an object that gets them.
+    const nrpy_odiegm_step_type * stepType;
+    stepType = nrpy_odiegm_step_RK4;
+    //Here is where the method is actually set, by specific name since that's what GSL does. 
 
-    //double butcher[3][3] = {{0.0,0.0,0.0},{1.0,1.0,0.0},{2,0.5,0.5}};
-    //RK2
+    //Technically this sets the type. What we do now is basically undo that pointer nonsense. 
+    int dimension = stepType->dimension;
+    //Since we know the dimension, we can now fill an actual butcher array. 
+    double butcher[dimension][dimension];
+    int counter = 0;
+    for (int i=0; i < dimension; i++) {
+        for (int j = 0; j < dimension; j++) {
+            butcher[i][j] = *((double *)(*stepType).butcher+counter);
+            printf("test %10.9e\n", butcher[i][j]);
+            counter++;
+        }
+    }
 
-    double butcher[5][5] = {{0.0,0.0,0.0,0.0,0.0},{0.5,0.5,0.0,0.0,0.0},{0.5,0.0,0.5,0.0,0.0},{1.0,0.0,0.0,1.0,0.0},{4,1.0/6.0,1.0/3.0,1.0/3.0,1.0/6.0}};
-    //RK4. This is the standard method in use. 
+    //How to get array size no longer needed.
 
-    /*double butcher[7][7] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0},
-    {0.2,0.2,0.0,0.0,0.0,0.0,0.0},
-    {0.3,3.0/40.0,9.0/40.0,0.0,0.0,0.0,0.0},
-    {0.6,0.3,-9.0/10.0,1.2,0.0,0.0,0.0},
-    {1.0,-11.0/54.0,2.5,-70.0/27.0,35.0/27.0,0.0,0.0},
-    {7.0/8.0,1631.0/55296.0,175.0/512.0,575.0/13824.0,44275.0/110592.0,253.0/4096.0,0.0},
-    {5,37.0/378.0,0.0,250.0/621.0,125.0/594.0,0.0,512.0/1771.0}};*/
-    //RK5 (Cash-Karp version)
-
-    //How to get array size: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
-    size_t methodSize = sizeof(butcher)/sizeof(butcher[0][0]);
-    int dimension = sqrt((int)methodSize);
-    //We need to know how big our method is, especially if passed one we've never seen before. 
     if (validate == true) {
         printf("Method Order: %i. \nOrder of Error should be near to or larger than Method Order + 1.\n",(int)butcher[dimension-1][0]);
         printf("If not, try a larger step size, roundoff error may be interfering.\n");
