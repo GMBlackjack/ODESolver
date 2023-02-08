@@ -188,25 +188,33 @@ int main()
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     //Technically this sets the type. What we do now is basically undo that pointer nonsense. 
-    int dimension = stepType->dimension;
+    int rows = stepType->rows;
+    int columns = stepType->columns;
     //Since we know the dimension, we can now fill an actual butcher array. 
-    double butcher[dimension][dimension];
+    double butcher[rows][columns];
     int counter = 0;
-    for (int i=0; i < dimension; i++) {
-        for (int j = 0; j < dimension; j++) {
+    for (int i=0; i < rows; i++) {
+        for (int j = 0; j < columns; j++) {
             butcher[i][j] = *((double *)(*stepType).butcher+counter);
             printf("test %10.9e\n", butcher[i][j]);
             counter++;
         }
     }
 
+    int methodType = 1;
+    if (stepType->rows == stepType->columns) {
+        methodType = 0; //aka, normal RK-type method. 
+    } //no need for an else, we set it to 1 earlier to represent Adaptive methods. 
+    //This integer is actually very useful as it can help us keep track of index changes between
+    //the two types of methods! 
+
     //How to get array size no longer needed.
 
     if (validate == true) {
-        printf("Method Order: %i. \nOrder of Error should be near to or larger than Method Order + 1.\n",(int)butcher[dimension-1][0]);
+        printf("Method Order: %i. \nOrder of Error should be near to or larger than Method Order + 1.\n",(int)butcher[rows-1][0]);
         printf("If not, try a larger step size, roundoff error may be interfering.\n");
     } else {
-        printf("Method Order: %i.\n",(int)butcher[dimension-1][0]);
+        printf("Method Order: %i.\n",(int)butcher[rows-1][0]);
     }
     //If validation is not needed, we don't care about the Order of the Error. 
 
@@ -342,10 +350,13 @@ int main()
                 //Naturally the half-step results are reported as truth, but we get an error estimate from the difference
                 //between the two values. 
 
-                if (i == 0 && iteration == 1 && validate == false) {
+                //For adaptive methods we only go through iteration 1 and 2
+
+                if (i == 0 && iteration == 1 && validate == false && methodType == 0) {
                     //don't take unecessary steps, if we are on the first step and have no need for the large step, ignore it.
                     //Since we always want the first step to go through don't bother calculating things we don't need. 
                     iteration = 2;
+                    //This doesn't actually apply to adaptive methods since we cheat and do it in one iteration. 
                 }
 
                 double scale = 1.0;
@@ -364,14 +375,16 @@ int main()
                 }
                 //Every time it's needed, we multiply the step by the scale. 
 
-                double K[dimension][numberOfEquations];
+                double K[rows-methodType][numberOfEquations];
                 //These are the K-values that are required to evaluate RK-like methods. 
                 //They will be determined based on the provided butcher table.
                 //This is a 2D matrix since each diffyQ has its own set of K-values. 
+                //Note that we subtract the method type: K doesn't need to be larger if 
+                //we are using an adaptive butcher table. 
 
                 //Since we'll be calling K while it's empty, even though there should be no errors due
                 //to the way it's set up, let's go ahead and fill it with zeroes.
-                for (int j = 0; j<dimension; j++) {
+                for (int j = 0; j<rows-methodType; j++) {
                     for (int n = 0; n<numberOfEquations; n++) {
                         K[j][n]=0.0;
                     }
@@ -396,7 +409,7 @@ int main()
                 //Create an array to hold the constants we want.
                 //Find way to generalize. 
 
-                for (int j = 1; j < dimension; j++) {
+                for (int j = 1; j < rows-methodType; j++) {
                     //Due to the way the Butcher Table is formatted, start our index at 1 and stop at the end. 
                     double xInsert = currentPosition+shift*step*scale + butcher[j-1][0]*step*scale;
                     //xInsert does not change much for different tables, just adjust the "step correction" term.
@@ -409,10 +422,11 @@ int main()
                     //This is because ySmolSteps is y at first, but we will need to evolve it forward
                     //two steps, so on the second small step this will be different. 
 
-                    for (int n = 1; n < dimension; n++) {
+                    for (int n = 1; n < columns; n++) {
                         //Once again, start at index of 1 rather than 0.
                         for (int q = 0; q < numberOfEquations; q++) {
                             yInsert[q] = yInsert[q] + butcher[j-1][n]*K[n][q];
+                            
                         }
                         //Each individual yInsert portion is dependent on one of the K values.
                         //K values are initially set to zero even though technically whenever 
@@ -440,8 +454,8 @@ int main()
                 for (int n = 0; n< numberOfEquations; n++) {
                     K[0][n] = ySmolSteps[n]; //The 0th spot in the K-values is reserved for holding the 
                     //final value while it's being calculated. 
-                    for (int j = 1; j < dimension; j++) {
-                        K[0][n] = K[0][n] + butcher[dimension-1][j]*K[j][n]; 
+                    for (int j = 1; j < columns; j++) {
+                        K[0][n] = K[0][n] + butcher[rows-1-methodType][j]*K[j][n]; 
                         //This is where the actual approximation is finally performed. 
                     }
                     ySmolSteps[n] = K[0][n]; //Set ySmol to the new estimated value. 
@@ -456,17 +470,38 @@ int main()
                     for (int n = 0; n<numberOfEquations; n++) {
                         yBigStep[n] = ySmolSteps[n];
                         ySmolSteps[n] = y[n];
+
+                        //we still need to reset the value for SmolSteps on the first iteration
+                        //no matter the type of method. 
                     }
                 }
                 //This only runs on the first iteration, setting the big step to the right value
                 //and resetting the small steps for when we actually use it. 
                 //This odd structure exists purely for efficiency. 
+                
 
-                if (validate == true && iteration == 2 && i == 0) {
+                //If we are in an adaptive method situation, use that method and exit the iterations loop.
+                if (methodType == 1) {
+                    for (int n = 0; n< numberOfEquations; n++) {
+                        K[0][n] = ySmolSteps[n]; //The 0th spot in the K-values is reserved for holding the 
+                        //final value while it's being calculated. 
+                        for (int j = 1; j < columns; j++) {
+                            K[0][n] = K[0][n] + butcher[rows-1][j]*K[j][n]; 
+                            //This is where the actual approximation is finally performed. 
+                            //This time we use the bottom row, not the second to bottom row (for adaptive methods)
+                        }
+                        ySmolSteps[n] = K[0][n]; //Set ySmol to the new estimated value. 
+                    }
+                    iteration = 4; //break out now, we don't need to go any further. 
+                }
 
-                    //NOTE this hasn't exactly been checked yet. 
+                //printf("test %i %10.9e %10.9e\n", i, yBigStep[0], ySmolSteps[0]);
+
+                if (validate == true && i == 0 && iteration == 2) {
 
                     //Now that we've performed the approximation's first step at half the size, we can estimate the order.
+                    //NEEDS TO ALSO WORK SOMEHOW FOR ADAPTIVE METHODS
+
                     //Create 2 arrays to hold the true values. 
                     double truthValidateBig[numberOfEquations];
                     double truthValidateSmol[numberOfEquations];
@@ -546,10 +581,10 @@ int main()
 
                 //These if statements perform step adjustment if needed. Based on GSL's algorithm. 
                 else if (overError == true) {
-                    step = step * scaleFactor * pow(ratioED,-1.0/butcher[dimension-1][0]);
+                    step = step * scaleFactor * pow(ratioED,-1.0/butcher[rows-1-methodType][0]);
                     //printf("LOWER,%i %15.14e %15.14e %15.14e\n",i,currentPosition, step, ratioED);
                 } else { //if underError is true and overError is false is the only way to get here. The true-true situation is skipped.
-                    step = step * scaleFactor * pow(ratioED,-1.0/(butcher[dimension-1][0]+1));
+                    step = step * scaleFactor * pow(ratioED,-1.0/(butcher[rows-1-methodType][0]+1));
                     errorSatisfactory = true;
                     //printf("UPPER,%i %15.14e %15.14e %15.14e\n",i,currentPosition, step, ratioED);
                 }
@@ -584,7 +619,13 @@ int main()
         
         //Finally, we actually update the real answer. 
         for (int n = 0; n<numberOfEquations; n++) {
-            y[n]=ySmolSteps[n];
+            if (methodType == 1) {
+                y[n]=yBigStep[n];
+            } else {
+                y[n]=ySmolSteps[n];
+            }
+            //This check is required due to the way the butcher tables are stored. 
+            //Probably a more efficient way to do this. 
         }
 
         if (underError == true) {
@@ -594,11 +635,10 @@ int main()
             currentPosition = currentPosition + step;
             //in any other case we use the new step. Even the case where the step wasn't actually changed. 
         }
-
         //After each step is calculated, print results. 
         //However, prior to printing we need to run our exception and constant evaluators one more time.
         exceptionHandler(currentPosition,y,&cp);
-        constEval(currentPosition, y,&cp);
+        constEval(currentPosition,y,&cp);
         //Since we've usually been running them on yInsert, the actual y and c values have not generally seen 
         //the restrictions applied here. 
 
@@ -608,6 +648,9 @@ int main()
         for (int n = 0; n < numberOfEquations; n++) {
             //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
             fprintf(fp, "Equation %i:,\t%15.14e,\t",n, y[n]);
+            if (i==0 || i ==1) {
+                printf("test %i %i %i %15.14e \n", i, 0,n, y[n]);
+            }
         }
         assignConstants(c,&cp); 
         for (int n = 0; n < numberOfConstants; n++) {
