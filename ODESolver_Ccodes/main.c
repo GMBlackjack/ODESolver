@@ -9,11 +9,15 @@ void diffyQEval (double x, double y[], double c[])
     //Efficient(ish) Assignment Method
 
         double y0 = y[0];
-        y[0] = y0;
+        double y1 = y[1];
+        y[0] = y1;
+        y[1] = -9.8*sin(y0);
 
     //This is the differential equation system itself. 
+    //We have a very simple y'' = y+x situation here, split up into
+    // y[0]' = y[1]
+    // y[1]' = y[0]+x
     //Naturally other equaitons can be put in, but be sure to change the numberOfEquations value!
-    //Remember to declare a double y variable for each differential equation so no overwriting occurs. 
     //Note: not guaranteed to work for functions that are not well-behaved. 
 }
 
@@ -21,8 +25,8 @@ void diffyQEval (double x, double y[], double c[])
 void getInitialCondition (double y[])
 {
     //be sure to have these MATCH the equations in diffyQEval
-    //every differential equation needs one. 
-    y[0] = 1.0;
+    y[0] = 0.0;
+    y[1] = 6.2;
 }
 
 
@@ -34,7 +38,10 @@ void constEval (double y[], double c[])
 
 void knownQEval (double x, double y[])
 {
-    //not implemented by default.
+    y[0] = exp(x) + exp(-x) - x;
+    y[1] = exp(x) - exp(-x) - 1;
+    //This function is only used if there are known solutions. 
+    //Do note that this would change with different boundary conditions. 
 }
 
 
@@ -49,16 +56,19 @@ void exceptionHandler (double x, double y[], double c[])
 int doWeTerminate (double x, double y[], double c[])
 {
     //This funciton might be empty. It's only used if the user wants to have a special termination condition.
-    return 0;
-    //return 1 for termination.
+    if ((x > 0 && y[0] <= 0)||(y[0] > 3.1419/1.0)) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 /*
- * User-Defined Differential Equation(s)
+ * Simple Example: u''=u+x Solver
  */
 int main() {
 
-double butcher[2][2] = {{0.0,0},{1.0,1.0}};
+double butcher[5][5] = {{0.0,0,0,0,0},{0.5,0.5,0,0,0},{0.5,0.0,0.5,0,0},{1.0,0.0,0.0,1.0,0},{4.0,0.16666666666666666,0.3333333333333333,0.3333333333333333,0.16666666666666666}};
     printf("Beginning ODE Solver \"Odie\" V7...\n");
     
     //SECTION I: Preliminaries
@@ -68,11 +78,11 @@ double butcher[2][2] = {{0.0,0},{1.0,1.0}};
 
     double step = 0.01; //the "step" value.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
-    int numberOfEquations = 1; //How many equations are in our system?
+    int numberOfEquations = 2; //How many equations are in our system?
     int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 100; //How many steps we are going to take?
+    const int SIZE = 800; //How many steps we are going to take?
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have

@@ -136,7 +136,7 @@ int main()
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 1000000; //How many steps we are going to take? This is the default termination condition. 
+    const int SIZE = 10000000; //How many steps we are going to take? This is the default termination condition. 
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
@@ -184,7 +184,7 @@ int main()
     //All the butcher tables themselves are defined in butcher.c. 
     //We just need to create an object that gets them.
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_RK4;
+    stepType = nrpy_odiegm_step_ARKF;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     //Technically this sets the type. What we do now is basically undo that pointer nonsense. 

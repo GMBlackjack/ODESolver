@@ -65,7 +65,7 @@ int doWeTerminate (double x, double y[], double c[])
  */
 int main() {
 
-double butcher[4][4] = {{0.0,0,0,0},{1.0,1.0,0,0},{2.0,0.5,0.5,0},{2.0,1.0,0.0,0}};
+double butcher[5][5] = {{0.0,0,0,0,0},{0.5,0.5,0,0,0},{0.5,0.0,0.5,0,0},{1.0,0.0,0.0,1.0,0},{4.0,0.16666666666666666,0.3333333333333333,0.3333333333333333,0.16666666666666666}};
     printf("Beginning ODE Solver \"Odie\" V7...\n");
     
     //SECTION I: Preliminaries
