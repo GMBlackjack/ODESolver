@@ -136,7 +136,7 @@ int main()
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 10000000; //How many steps we are going to take? This is the default termination condition. 
+    const int SIZE = 200000; //How many steps we are going to take? This is the default termination condition. 
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
@@ -147,8 +147,8 @@ int main()
     //enable to have the actual errors reported. Produces junk data if there is no declared known function. 
 
     //ERROR PARAMETERS: Use these to set limits on the erorr. 
-    double absoluteErrorLimit = 1e-15; //how big do we let the absolute error be?
-    double relativeErrorLimit = 1e-15; //how big do we let the relative error be?
+    double absoluteErrorLimit = 1e-10; //how big do we let the absolute error be?
+    double relativeErrorLimit = 1e-10; //how big do we let the relative error be?
     double ayErrorScaler = 1.0; //For giving extra weight to the functions themselves.
     double adyErrorScaler = 1.0;  //For giving extra weight to the derivatives. 
     //Note: the function for determining error creates a combined tester, it doesn't do either/or absolute or relative.
@@ -184,7 +184,7 @@ int main()
     //All the butcher tables themselves are defined in butcher.c. 
     //We just need to create an object that gets them.
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_ARKF;
+    stepType = nrpy_odiegm_step_AEH;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     //Technically this sets the type. What we do now is basically undo that pointer nonsense. 
@@ -196,7 +196,6 @@ int main()
     for (int i=0; i < rows; i++) {
         for (int j = 0; j < columns; j++) {
             butcher[i][j] = *((double *)(*stepType).butcher+counter);
-            printf("test %10.9e\n", butcher[i][j]);
             counter++;
         }
     }
@@ -306,6 +305,11 @@ int main()
         //To use adaptive time-step, we need to store data at different step values:
         double yBigStep[numberOfEquations];
         double ySmolSteps[numberOfEquations];
+
+        double yBigStepHalf[numberOfEquations];
+        double ySmolStepsHalf[numberOfEquations];
+        //These are here for validation only. We would rather not declare them at all, but they have to be declared outside the loop
+        //So the information within can be stored through the iterations. 
 
         struct constantParameters cpBigStep; 
 
@@ -466,7 +470,7 @@ int main()
                 constEval(currentPosition+(1.0+shift)*step*scale,ySmolSteps,&cpSmolSteps); 
                 //Check for exceptions and evaluate constants. 
 
-                if (iteration == 1) {
+                if (iteration == 1 || (i == 0 && validate == true && methodType == 1)) {
                     for (int n = 0; n<numberOfEquations; n++) {
                         yBigStep[n] = ySmolSteps[n];
                         ySmolSteps[n] = y[n];
@@ -492,38 +496,98 @@ int main()
                         }
                         ySmolSteps[n] = K[0][n]; //Set ySmol to the new estimated value. 
                     }
-                    iteration = 4; //break out now, we don't need to go any further. 
+                    if (validate == true && i == 0 && iteration ==1) {
+                        //do nothing fancy. 
+                    } else {
+                        iteration = 4; //break out now, we don't need to go any further. 
+                        //We avoid this on the first iteration only if we want to validate. 
+                    }
                 }
 
                 //printf("test %i %10.9e %10.9e\n", i, yBigStep[0], ySmolSteps[0]);
+                if (validate == true && i == 0) {
+                    if (methodType == 0 && iteration == 2) {
+                        //The normal validation for the normal RK methods. 
 
-                if (validate == true && i == 0 && iteration == 2) {
+                        //Now that we've performed the approximation's first step at half the size, we can estimate the order.
 
-                    //Now that we've performed the approximation's first step at half the size, we can estimate the order.
-                    //NEEDS TO ALSO WORK SOMEHOW FOR ADAPTIVE METHODS
+                        //Create 2 arrays to hold the true values. 
+                        double truthValidateBig[numberOfEquations];
+                        double truthValidateSmol[numberOfEquations];
+                        //Fill it with the true values. 
+                        knownQEval(bound+step,truthValidateBig);
+                        knownQEval(bound+step*0.5,truthValidateSmol);
+                        //Then from this calculate the estimated errors.
 
-                    //Create 2 arrays to hold the true values. 
-                    double truthValidateBig[numberOfEquations];
-                    double truthValidateSmol[numberOfEquations];
-                    //Fill it with the true values. 
-                    knownQEval(bound+step,truthValidateBig);
-                    knownQEval(bound+step*0.5,truthValidateSmol);
-                    //Then from this calculate the estimated errors.
+                        for (int n = 0; n < numberOfEquations; n++) {
+                            truthValidateBig[n] = (truthValidateBig[n] - yBigStep[n]);
+                            truthValidateSmol[n] = (truthValidateSmol[n] - ySmolSteps[n]);
+                            //Now the validation steps contain their own errors, we can compare them.
+                            printf("Order of Error: %i\t%f\n",n, log2(truthValidateBig[n]/truthValidateSmol[n]));
+                            //print out the estimated error. 
+                        }
+                        //Note: this will not produce an integer, but with proper data it will be close to an integer
+                        //and the validation would be performed by rounding. 
+                        //However one can also get errors if the results are too exact, roundoff error can ruin the calcluation. 
+                        //Using larger step sizes usually removes that. 
+                    } if (methodType == 1) {
+                        if (iteration == 1) {
+                            //validation has to be run differently for inherently adaptive methods, since we don't calculate half-steps naturally. 
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                yBigStepHalf[n] = yBigStep[n];
+                                ySmolStepsHalf[n] = ySmolSteps[n];
+                                //store the previous values for next loop.
+                                ySmolSteps[n] = y[n];
+                                //This also needs to be cleared again, for once we do not want it to carry over. 
+                            }
+                        } else {
+                            //This should only trigger on iteration == 2. 
+                            //The normal validation for the inherently adaptive RK methods. 
 
-                    for (int n = 0; n < numberOfEquations; n++) {
-                        truthValidateBig[n] = (truthValidateBig[n] - yBigStep[n]);
-                        truthValidateSmol[n] = (truthValidateSmol[n] - ySmolSteps[n]);
-                        //Now the validation steps contain their own errors, we can compare them.
-                        printf("Order of Error: %i\t%f\n",n, log2(truthValidateBig[n]/truthValidateSmol[n]));
-                        //print out the estimated error. 
-                    }
-                    //Note: this will not produce an integer, but with proper data it will be close to an integer
-                    //and the validation would be performed by rounding. 
-                    //However one can also get errors if the results are too exact, roundoff error can ruin the calcluation. 
-                    //Using larger step sizes usually removes that. 
+                            //Now that we've performed the approximation's first step at half the size, we can estimate the order
+                            //for both internal calculations
+
+                            //Create 2 arrays to hold the true values. 
+                            double truthValidateBig[numberOfEquations];
+                            double truthValidateSmol[numberOfEquations];
+                            //Fill it with the true values. 
+                            knownQEval(bound+step,truthValidateBig);
+                            knownQEval(bound+step*0.5,truthValidateSmol);
+                            
+                            //Then from this calculate the estimated errors.
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                truthValidateBig[n] = (truthValidateBig[n] - yBigStepHalf[n]);
+                                truthValidateSmol[n] = (truthValidateSmol[n] - yBigStep[n]);
+                                //Now the validation steps contain their own errors, we can compare them.
+                                printf("Order of ErrorA: %i\t%f\n",n, log2(truthValidateBig[n]/truthValidateSmol[n]));
+                                //print out the estimated error. 
+                            }
+                            knownQEval(bound+step,truthValidateBig);
+                            knownQEval(bound+step*0.5,truthValidateSmol);
+
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                truthValidateBig[n] = (truthValidateBig[n] - ySmolStepsHalf[n]);
+                                truthValidateSmol[n] = (truthValidateSmol[n] - ySmolSteps[n]);
+                                //Now the validation steps contain their own errors, we can compare them.
+                                printf("Order of ErrorB: %i\t%f\n",n, log2(sqrt(truthValidateBig[n]*truthValidateBig[n])/sqrt(truthValidateSmol[n]*truthValidateSmol[n])));
+                                //print out the estimated error. 
+                            }
+                            //Admittedly the meaning of the Big and Smol steps become quite convoluted when validating the
+                            //adaptive methods. Thing of big as the higher order result, and smol as the lower order in this case. 
+
+                            //Note: this will not produce an integer, but with proper data it will be close to an integer
+                            //and the validation would be performed by rounding. 
+                            //However one can also get errors if the results are too exact, roundoff error can ruin the calcluation. 
+                            //Using larger step sizes usually removes that. 
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                yBigStep[n] = yBigStepHalf[n];
+                                ySmolSteps[n] = ySmolStepsHalf[n];
+                                //now undo what we just did so the corret values can be read.
+                            }
+                        }
+                    } 
 
                 }
-
             }
             //Now that the step and double step have been taken, time to calculate some errors and see if we move 
             //on to the next step. 
@@ -648,9 +712,6 @@ int main()
         for (int n = 0; n < numberOfEquations; n++) {
             //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
             fprintf(fp, "Equation %i:,\t%15.14e,\t",n, y[n]);
-            if (i==0 || i ==1) {
-                printf("test %i %i %i %15.14e \n", i, 0,n, y[n]);
-            }
         }
         assignConstants(c,&cp); 
         for (int n = 0; n < numberOfConstants; n++) {
