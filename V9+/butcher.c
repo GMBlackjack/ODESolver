@@ -94,3 +94,7 @@ double butcherADP8[15][14] = {{0.0,0,0,0,0,0,0,0,0,0,0,0,0,0},{0.055555555555555
 const nrpy_odiegm_step_type nrpy_odiegm_step_ADP8_0 = {15,14,&butcherADP8};
 const nrpy_odiegm_step_type *nrpy_odiegm_step_ADP8 = &nrpy_odiegm_step_ADP8_0;
 
+//Adams-Bashforth Method. Notably just has a "1", because this table can be constructed at runtime. 
+double butcherAB[1][1] = {1.0};
+const nrpy_odiegm_step_type nrpy_odiegm_step_AB0 = {1,1,&butcherAB};
+const nrpy_odiegm_step_type *nrpy_odiegm_step_AB = &nrpy_odiegm_step_AB0;
