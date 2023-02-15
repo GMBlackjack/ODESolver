@@ -117,6 +117,8 @@ int main()
     double absoluteMaxStep = 0.1; //An absolute cap on the step size, 0.1 by default. 
     double absoluteMinStep = 1e-10; //An absolute floor on the step size, 1e-10 by default. 
 
+    int adamsBashforthOrder = 12; //if using the AB method, specify which order you want.
+
     //double butcher[5][5] = {{0.0,0,0,0,0},{0.5,0.5,0,0,0},{0.5,0.0,0.5,0,0},{1.0,0.0,0.0,1.0,0},{4.0,0.16666666666666666,0.3333333333333333,0.3333333333333333,0.16666666666666666}};
 
     //We need to define a struct that can hold all possible constants. 
