@@ -136,7 +136,7 @@ int main()
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 20; //How many steps we are going to take? This is the default termination condition. 
+    const int SIZE = 100000; //How many steps we are going to take? This is the default termination condition. 
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
@@ -169,7 +169,7 @@ int main()
 
     bool noAdaptiveTimestep = true;
 
-    int adamsBashforthOrder = 4; //if using the AB method, specify which order you want.
+    int adamsBashforthOrder = 14; //if using the AB method, specify which order you want.
 
     //We need to define a struct that can hold all possible constants. 
     struct constantParameters cp; 
@@ -190,7 +190,7 @@ int main()
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_RK4;
+    stepType2 = nrpy_odiegm_step_DP8;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
@@ -238,15 +238,7 @@ int main()
             }
         }
         butcher2[adamsBashforthOrder-1][0] = adamsBashforthOrder;
-        for (int n=0; n < adamsBashforthOrder; n++) {
-            for (int m = 0; m < adamsBashforthOrder; m++) {
-                //butcher[n][m] = adamsArray[n][m];
-                printf("%10.9e  ", butcher2[n][m]);
-            }
-            printf("\n");
-        }
-        //READING IS INCORRECT! 
-        printf("~~\n");
+        
         counter = 0;
         if (stepType2 != nrpy_odiegm_step_AB) {
             for (int i=0; i < stepType2->rows; i++) {
@@ -256,14 +248,6 @@ int main()
                 }
             }
             butcher[rows-1][0] = adamsBashforthOrder;
-        }
-        //BE VERY CAREFUL, WE CHANGE THE DEFINITIONS OF ROWS LATER.
-        for (int n=0; n < rows; n++) {
-            for (int m = 0; m < columns; m++) {
-                //butcher[n][m] = adamsArray[n][m];
-                printf("%10.9e  ", butcher[n][m]);
-            }
-            printf("\n");
         }
     } else {
         //just the normal RK type method here.
@@ -368,10 +352,9 @@ int main()
 
     //This loop fills out all the data.
     //It takes a provided butcher table and executes the method stored within. Any table should work.  
-        double yValues[numberOfEquations][(int)butcher2[rows-1][0]];
+        double yValues[numberOfEquations][(int)butcher2[adamsBashforthOrder-1][0]];
         //SOMETHING HERE IS CURRENTLY BROKEN
         for (int i = 0; i < SIZE; i++){ 
-            printf("%i\n",i);
 
             //For AB method. 
             //Co opt later for RK method if needed. 
@@ -381,27 +364,15 @@ int main()
                     yValues[n][0] = y[n];
                     for (int m = 1; m < (int)butcher2[adamsBashforthOrder-1][0]; m++) {
                         yValues[n][m] = 0; //these values shouldn't be used, but zero them anyway. 
-                        printf("%10.9e \n", yValues[0][0]);
                     } 
-                    printf("%10.9e \n", yValues[0][0]);
                     //wait this gets changed next loop somehow...
                 }
-                printf("%10.9e \n", yValues[0][0]);
-                for (int n=0; n < numberOfEquations; n++) {
-                    for (int m = 0; m < adamsBashforthOrder; m++) {
-                        //butcher[n][m] = adamsArray[n][m];
-                        printf("%10.9e  ", yValues[n][m]);
-                        printf("%10.9e \n", yValues[0][0]);
-                    }
-                    printf("\n");
-                }
-                printf("~~\n");
+
 
             }
 
 
-            if (methodType != 2 || i < adamsBashforthOrder) {
-                printf("init");
+            if (methodType != 2 || (i < adamsBashforthOrder && stepType2 != nrpy_odiegm_step_AB)) {
                 //If we're not doing Adams-Bashforth, do the "normal" loop for RK-like methods.
                 //i represents how many steps have been taken. 0 is the initial condition, that is, the variable `bound`.
 
@@ -872,7 +843,7 @@ int main()
                     //At the END of every loop, we "shift" the values in the array down one space, that is, into the "past"
                     //Present values are 0, previous step is 1, step before that is 2, etc. 
                     for (int n = 0; n < numberOfEquations; n++) {
-                        for (int m = (int)butcher2[rows-1][0] - 1; m > 0; m--) {
+                        for (int m = (int)butcher2[adamsBashforthOrder-1][0] - 1; m > 0; m--) {
                             //possible error source here: loop indexing error, check later. 
                             yValues[n][m] = yValues[n][m-1];
                             //note that we start at the last column, m, and move the adjacent column to it. 
@@ -883,15 +854,6 @@ int main()
                         //We have now completed stepping. 
                     }  
                 }
-
-                for (int n=0; n < adamsBashforthOrder; n++) {
-                    for (int m = 0; m < adamsBashforthOrder; m++) {
-                        //butcher[n][m] = adamsArray[n][m];
-                        printf("%10.9e  ", yValues[n][m]);
-                    }
-                    printf("\n");
-                }
-                printf("~~\n");
 
                 //And the very last thing we do in the loop is ask if we terminate it. 
                 if (doWeTerminate(currentPosition, y, &cp) == 1) {
@@ -939,8 +901,8 @@ int main()
 
                 //first, determine which row to use. 
                 int currentRow;
-                if (i < (int)butcher2[rows-1][0]-1) {
-                    currentRow = (int)butcher2[rows-1][0]-1-i;
+                if (i < (int)butcher2[adamsBashforthOrder-1][0]-1) {
+                    currentRow = (int)butcher2[adamsBashforthOrder-1][0]-1-i;
                     //basically, keep track of how many steps we actually have on offer to use. 
                 } else {
                     currentRow = 0;
@@ -948,7 +910,7 @@ int main()
                 }
 
 
-                for (int m = (int)butcher2[rows-1][0]-1; m >= 0; m--) {
+                for (int m = (int)butcher2[adamsBashforthOrder-1][0]-1; m >= 0; m--) {
                     //we actually need m=0 in this case, the "present" is evaluated. 
                     xInsert = bound + step*(i-m);
                     //the "current locaiton" depends on how far in the past we are.
@@ -976,7 +938,7 @@ int main()
                 //At the END of every loop, we "shift" the values in the array down one space, that is, into the "past"
                 //Present values are 0, previous step is 1, step before that is 2, etc. 
                 for (int n = 0; n < numberOfEquations; n++) {
-                    for (int m = (int)butcher2[rows-1][0] - 1; m > 0; m--) {
+                    for (int m = (int)butcher2[adamsBashforthOrder-1][0] - 1; m > 0; m--) {
                         //possible error source here: loop indexing error, check later. 
                         yValues[n][m] = yValues[n][m-1];
                         //note that we start at the last column, m, and move the adjacent column to it. 
@@ -1010,16 +972,16 @@ int main()
 
                 //can't report error esitmates.
                 
-                /*if (reportErrorActual == true) {
+                 if (reportErrorActual == true) {
                     //Now if we have an actual error to compare against with, there's some more work to do. 
                     double yTruth[numberOfEquations];
-                    double cTruth[numberOfEquations];
+                    double cTruth[numberOfConstants];
                     struct constantParameters cpTruth; 
 
                     cpTruth.dimension = numberOfConstants;
                     cpTruth.rho = cp.rho;
-                    knownQEval(currentPosition,yTruth);
-                    constEval(currentPosition,yTruth,&cpTruth);
+                    knownQEval(bound+i*step,yTruth);
+                    constEval(bound+i*step,yTruth,&cpTruth);
                     assignConstants(c,&cp); 
                     assignConstants(cTruth,&cpTruth); 
                     fprintf(fp, "Errors:,\t");
@@ -1033,7 +995,7 @@ int main()
                     } 
                     //printf("\n");
                     fprintf(fp,"\n");
-                }*/
+                }
 
                 //printf("rho %10.9e \n", cp.rho);
 
