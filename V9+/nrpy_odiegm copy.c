@@ -88,7 +88,7 @@ int main()
     int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 20; //How many steps we are going to take? This is the default termination condition. 
+    const int SIZE = 2000000; //How many steps we are going to take? This is the default termination condition. 
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
@@ -121,7 +121,7 @@ int main()
 
     bool noAdaptiveTimestep = true;
 
-    int adamsBashforthOrder = 5; //if using the AB method, specify which order you want.
+    int adamsBashforthOrder = 19; //if using the AB method, specify which order you want.
 
     //We need to define a struct that can hold all possible constants. 
     struct constantParameters cp; 
@@ -142,7 +142,7 @@ int main()
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_DP8;
+    stepType2 = nrpy_odiegm_step_AB;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
@@ -189,7 +189,10 @@ int main()
                 counter++;
             }
         }
-        butcher2[adamsBashforthOrder-1][0] = adamsBashforthOrder;
+        if (adamsBashforthOrder == 19) {
+            butcher2[adamsBashforthOrder-1][0] = 0.0;            
+        }
+
         
         counter = 0;
         if (stepType2 != nrpy_odiegm_step_AB) {
@@ -210,6 +213,14 @@ int main()
             }
         }
     }
+
+                for (int n = 0; n < adamsBashforthOrder ; n++) {
+                    for (int m = 0; m < adamsBashforthOrder ; m++) {
+                        printf("%10.9e ",butcher2[n][m]);
+                    }
+                    printf("\n");
+                }
+                printf("\n");
 
     //How to get array size no longer needed.
 
@@ -304,7 +315,7 @@ int main()
 
     //This loop fills out all the data.
     //It takes a provided butcher table and executes the method stored within. Any table should work.  
-        double yValues[numberOfEquations][(int)butcher2[adamsBashforthOrder-1][0]];
+        double yValues[numberOfEquations][adamsBashforthOrder];
         //SOMETHING HERE IS CURRENTLY BROKEN
         for (int i = 0; i < SIZE; i++){ 
 
@@ -314,7 +325,7 @@ int main()
                 //first time initialization.
                 for (int n = 0; n< numberOfEquations; n++) {
                     yValues[n][0] = y[n];
-                    for (int m = 1; m < (int)butcher2[adamsBashforthOrder-1][0]; m++) {
+                    for (int m = 1; m < adamsBashforthOrder; m++) {
                         yValues[n][m] = 0; //these values shouldn't be used, but zero them anyway. 
                     } 
                     //wait this gets changed next loop somehow...
@@ -795,7 +806,7 @@ int main()
                     //At the END of every loop, we "shift" the values in the array down one space, that is, into the "past"
                     //Present values are 0, previous step is 1, step before that is 2, etc. 
                     for (int n = 0; n < numberOfEquations; n++) {
-                        for (int m = (int)butcher2[adamsBashforthOrder-1][0] - 1; m > 0; m--) {
+                        for (int m = adamsBashforthOrder - 1; m > 0; m--) {
                             //possible error source here: loop indexing error, check later. 
                             yValues[n][m] = yValues[n][m-1];
                             //note that we start at the last column, m, and move the adjacent column to it. 
@@ -853,23 +864,18 @@ int main()
 
                 //first, determine which row to use. 
                 int currentRow;
-                if (i < (int)butcher2[adamsBashforthOrder-1][0]-1) {
-                    currentRow = (int)butcher2[adamsBashforthOrder-1][0]-1-i;
+                if (i < adamsBashforthOrder-1) {
+                    currentRow = adamsBashforthOrder-1-i;
                     //basically, keep track of how many steps we actually have on offer to use. 
                 } else {
                     currentRow = 0;
                     //the highest order part of the method is used. 
                 }
 
-                for (int n = 0; n < numberOfEquations ; n++) {
-                    for (int m = 0; m < adamsBashforthOrder ; m++) {
-                        printf("%10.9e ",yValues[n][m]);
-                    }
-                    printf("\n");
-                }
-                printf("\n");
 
-                for (int m = (int)butcher2[adamsBashforthOrder-1][0]-1; m >= 0; m--) {
+                //butcher2[adamsBashforthOrder-1][0];
+
+                for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
                     //we actually need m=0 in this case, the "present" is evaluated. 
                     xInsert = bound + step*(i-m);
                     //the "current locaiton" depends on how far in the past we are.
@@ -889,15 +895,15 @@ int main()
 
                     //With that evaluation, we can change the value of y for each equation. 
                     for (int n = 0; n< numberOfEquations; n++) {
-                        y[n] = y[n] + step*butcher2[currentRow][m]*dyOut[n];
-                    }
+                        y[n] = y[n] + step*butcher2[currentRow][m+currentRow]*dyOut[n];
+                        }
                     //Keep in mind this is procedural, y isn't right until all values of m have been cycled through. 
                 }
 
                 //At the END of every loop, we "shift" the values in the array down one space, that is, into the "past"
                 //Present values are 0, previous step is 1, step before that is 2, etc. 
                 for (int n = 0; n < numberOfEquations; n++) {
-                    for (int m = (int)butcher2[adamsBashforthOrder-1][0] - 1; m > 0; m--) {
+                    for (int m = adamsBashforthOrder-1; m > 0; m--) {
                         //possible error source here: loop indexing error, check later. 
                         yValues[n][m] = yValues[n][m-1];
                         //note that we start at the last column, m, and move the adjacent column to it. 
@@ -939,8 +945,8 @@ int main()
 
                     cpTruth.dimension = numberOfConstants;
                     cpTruth.rho = cp.rho;
-                    knownQEval(bound+i*step,yTruth);
-                    constEval(bound+i*step,yTruth,&cpTruth);
+                    knownQEval(bound+(i+1)*step,yTruth);
+                    constEval(bound+(i+1)*step,yTruth,&cpTruth);
                     assignConstants(c,&cp); 
                     assignConstants(cTruth,&cpTruth); 
                     fprintf(fp, "Errors:,\t");
