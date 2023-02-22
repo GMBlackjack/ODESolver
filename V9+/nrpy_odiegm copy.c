@@ -32,7 +32,7 @@ void exceptionHandler (double x, double y[], struct constantParameters *params)
 
 int doWeTerminate (double x, double y[], struct constantParameters *params)
 {
-    if (x >= 2) {
+    if (x >= 20) {
         return 1;
     } else {
         return 0;
@@ -82,14 +82,14 @@ int main()
     //and set, as well as the functions chosen. 
     //The system of differential equations can be found declared in diffyQEval().
 
-    double step = 0.00001; //the "step" value.
+    double step = 0.1; //the "step" value.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 1; //How many equations are in our system?
     int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 2000000; //How many steps we are going to take? This is the default termination condition. 
-    bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
+    const int SIZE = 20000000; //How many steps we are going to take? This is the default termination condition. 
+    bool validate = true; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
     //BE WARNED: setting validate to true makes it print out all error data on a second line, the file will have
     //to be read differently. 
@@ -121,7 +121,7 @@ int main()
 
     bool noAdaptiveTimestep = true;
 
-    int adamsBashforthOrder = 19; //if using the AB method, specify which order you want.
+    int adamsBashforthOrder = 10; //if using the AB method, specify which order you want.
 
     //We need to define a struct that can hold all possible constants. 
     struct constantParameters cp; 
@@ -142,7 +142,7 @@ int main()
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_AB;
+    stepType2 = nrpy_odiegm_step_RK2_Heun;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
@@ -213,14 +213,6 @@ int main()
             }
         }
     }
-
-                for (int n = 0; n < adamsBashforthOrder ; n++) {
-                    for (int m = 0; m < adamsBashforthOrder ; m++) {
-                        printf("%10.9e ",butcher2[n][m]);
-                    }
-                    printf("\n");
-                }
-                printf("\n");
 
     //How to get array size no longer needed.
 
@@ -375,6 +367,14 @@ int main()
                 bool overError = false;
                 //It's important to declare these outside the errorSatisfactory loop since to update the stepper we need to know
                 //exactly what kind of step change we just did. 
+
+                        //This is a slapped together solution for indexing. 
+                        //Find a better way:
+                        int quickPatch = 1;
+                        if (methodType == 2) {
+                            quickPatch = 0;
+                        }
+
                 while (errorSatisfactory == false) {
                     
                     //All of the bellow values start off thinking they are the values from the previous step or initial conditions. 
@@ -417,7 +417,7 @@ int main()
                         }
                         //Every time it's needed, we multiply the step by the scale. 
 
-                        double K[rows-methodType][numberOfEquations];
+                        double K[rows-methodType*quickPatch][numberOfEquations];
                         //These are the K-values that are required to evaluate RK-like methods. 
                         //They will be determined based on the provided butcher table.
                         //This is a 2D matrix since each diffyQ has its own set of K-values. 
@@ -426,7 +426,7 @@ int main()
 
                         //Since we'll be calling K while it's empty, even though there should be no errors due
                         //to the way it's set up, let's go ahead and fill it with zeroes.
-                        for (int j = 0; j<rows-methodType; j++) {
+                        for (int j = 0; j<rows-methodType*quickPatch; j++) {
                             for (int n = 0; n<numberOfEquations; n++) {
                                 K[j][n]=0.0;
                             }
@@ -451,7 +451,7 @@ int main()
                         //Create an array to hold the constants we want.
                         //Find way to generalize. 
 
-                        for (int j = 1; j < rows-methodType; j++) {
+                        for (int j = 1; j < rows-methodType*quickPatch; j++) {
                             //Due to the way the Butcher Table is formatted, start our index at 1 and stop at the end. 
                             double xInsert = currentPosition+shift*step*scale + butcher[j-1][0]*step*scale;
                             //xInsert does not change much for different tables, just adjust the "step correction" term.
@@ -497,7 +497,7 @@ int main()
                             K[0][n] = ySmolSteps[n]; //The 0th spot in the K-values is reserved for holding the 
                             //final value while it's being calculated. 
                             for (int j = 1; j < columns; j++) {
-                                K[0][n] = K[0][n] + butcher[rows-1-methodType][j]*K[j][n]; 
+                                K[0][n] = K[0][n] + butcher[rows-1-methodType*quickPatch][j]*K[j][n]; 
                                 //This is where the actual approximation is finally performed. 
                             }
                             ySmolSteps[n] = K[0][n]; //Set ySmol to the new estimated value. 
@@ -626,6 +626,14 @@ int main()
                             } 
 
                         }
+
+                        if (methodType == 2) {
+                            iteration = 4;
+                            //look we only do it once for AB. 
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                ySmolSteps[n] = yBigStep[n];
+                            }
+                        }
                     }
                     //Now that the step and double step have been taken, time to calculate some errors and see if we move 
                     //on to the next step. 
@@ -684,10 +692,10 @@ int main()
                             //These if statements perform step adjustment if needed. Based on GSL's algorithm. 
                         
                             else if (overError == true) {
-                                step = step * scaleFactor * pow(ratioED,-1.0/butcher[rows-1-methodType][0]);
+                                step = step * scaleFactor * pow(ratioED,-1.0/butcher[rows-1-methodType*quickPatch][0]);
                                 //printf("LOWER,%i %15.14e %15.14e %15.14e\n",i,currentPosition, step, ratioED);
                             } else { //if underError is true and overError is false is the only way to get here. The true-true situation is skipped.
-                                step = step * scaleFactor * pow(ratioED,-1.0/(butcher[rows-1-methodType][0]+1));
+                                step = step * scaleFactor * pow(ratioED,-1.0/(butcher[rows-1-methodType*quickPatch][0]+1));
                                 errorSatisfactory = true;
                                 //printf("UPPER,%i %15.14e %15.14e %15.14e\n",i,currentPosition, step, ratioED);
                             }
@@ -896,7 +904,7 @@ int main()
                     //With that evaluation, we can change the value of y for each equation. 
                     for (int n = 0; n< numberOfEquations; n++) {
                         y[n] = y[n] + step*butcher2[currentRow][m+currentRow]*dyOut[n];
-                        }
+                    }
                     //Keep in mind this is procedural, y isn't right until all values of m have been cycled through. 
                 }
 
@@ -960,14 +968,77 @@ int main()
                     } 
                     //printf("\n");
                     fprintf(fp,"\n");
-                }
 
-                //printf("rho %10.9e \n", cp.rho);
+                }
+                    //printf("rho %10.9e \n", cp.rho);
+
+                if (validate == true && i == adamsBashforthOrder) {
+                    //validation is gonna be tricky for AB methods, as it requries exact values for everythign
+                    //Thus, let's create a vector of exact values. 
+                    double yValidateValues[adamsBashforthOrder][numberOfEquations];
+                    //We will use this twice, once to do a sigle step, once to do a half step.
+                    //note the indeces are reversed from the usual yValues matrix. 
+                    
+                    for (int m = 0; m <adamsBashforthOrder; m++) {
+                        knownQEval(bound+step*(adamsBashforthOrder-m),yValidateValues[m]);
+                    }
+
+                    double yValidateBigStep[numberOfEquations];
+                    double yValidateBigStepResult[numberOfEquations];
+
+                    for (int n = 0; n< numberOfEquations; n++) {
+                            yValidateBigStepResult[n] = yValidateValues[0][n];
+                        }  
+
+                    for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
+                        system.function(bound+step*(adamsBashforthOrder-m), yValidateValues[m], yValidateBigStep, &cpInsert);
+                        for (int n = 0; n< numberOfEquations; n++) {
+                            yValidateBigStepResult[n] = yValidateBigStepResult[n] + step*butcher2[currentRow][m+currentRow]*yValidateBigStep[n];
+                        }  
+                    }
+
+                    for (int m = 0; m <adamsBashforthOrder; m++) {
+                        knownQEval(bound+step*adamsBashforthOrder-step*0.5*m,yValidateValues[m]);
+                        printf("test...: %f\n",yValidateValues[m][0]);
+                    }
+
+                    double yValidateSmolStep[numberOfEquations];
+                    double yValidateSmolStepResult[numberOfEquations];
+
+                    for (int n = 0; n< numberOfEquations; n++) {
+                            yValidateSmolStepResult[n] = yValidateValues[0][n];
+                        }  
+
+                    for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
+                        system.function(bound+step*(adamsBashforthOrder)-step*0.5*m, yValidateValues[m], yValidateSmolStep, &cpInsert);
+                        for (int n = 0; n< numberOfEquations; n++) {
+                            yValidateSmolStepResult[n] = yValidateSmolStepResult[n] + step*0.5*butcher2[currentRow][m+currentRow]*yValidateSmolStep[n];
+                        } 
+                        printf("test...: %f\n",yValidateSmolStepResult[0]);   
+                    }
+                        
+                    for (int n = 0; n< numberOfEquations; n++) {
+                            knownQEval(bound+step*adamsBashforthOrder+step,yValidateBigStep);
+                            knownQEval(bound+step*adamsBashforthOrder+step*0.5,yValidateSmolStep);
+                            printf("test...: %f\n", yValidateBigStep[n]);
+                            printf("test...: %f\n", yValidateSmolStep[n]);
+                        }        
+
+                    for (int n = 0; n < numberOfEquations; n++) {
+                        yValidateBigStep[n] = (yValidateBigStep[n] - yValidateBigStepResult[n]);
+                        yValidateSmolStep[n] = (yValidateSmolStep[n] - yValidateSmolStepResult[n]);
+                        //Now the validation steps contain their own errors, we can compare them.
+                        printf("Order of Error: %i\t%f\n",n, log2(yValidateBigStep[n]/yValidateSmolStep[n]));
+                        printf("And the other stuff...: %i %f %f\n",i, yValidateBigStep[n],yValidateSmolStep[n]);
+                        //print out the estimated error. 
+                    }
+                }
 
                 //And the very last thing we do in the loop is ask if we terminate it. 
-                if (doWeTerminate(currentPosition, y, &cp) == 1) {
+                if (doWeTerminate(bound+(i+1)*step, y, &cp) == 1) {
                     i = SIZE;
                 }
+
             }
         }
     //SECTION III: Analysis
