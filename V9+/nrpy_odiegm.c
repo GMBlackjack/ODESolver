@@ -96,7 +96,8 @@ int diffyQEval (double x, const double y[], double dydx[], void *params)
     //Be sure to declare any exceptions before running, both here and in exceptionHandler(), depending 
     //on the kind of exception desired.  
 
-    return 1;
+    return 0;
+    //GSL_SUCCESS is 0. We currently do not support fancy error codes. 
 }
 
 //This is the function to evaluate the known solution. Must be set manually.
@@ -131,7 +132,7 @@ void assignConstants (double c[], struct constantParameters *params)
 
 int main()
 {
-    printf("Beginning ODE Solver \"Odie\" V7...\n");
+    printf("Beginning ODE Solver \"Odie\" V9...\n");
     printf("%15.14e", sqrt(21.0));
     
     //CURRENTLY CHECKING THE HANDOVER.
@@ -181,7 +182,7 @@ int main()
 
     bool noAdaptiveTimestep = true; //If you don't want to take adaptive timesteps, set this to true. 
 
-    int adamsBashforthOrder = 12; //if using the AB method, specify which order you want.
+    int adamsBashforthOrder = 8; //if using the AB method, specify which order you want.
 
     //We need to define a struct that can hold all possible constants. 
     struct constantParameters cp; 
@@ -1115,7 +1116,7 @@ int main()
     // used to be a file converter here, now there isn't, we just close the file. 
     fclose(fp);
 
-    printf("ODE Solver \"Odie\" V7 Shutting Down...\n");
+    printf("ODE Solver \"Odie\" V9 Shutting Down...\n");
     return 0;
 }
 
