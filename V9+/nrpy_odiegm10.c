@@ -1,5 +1,5 @@
 //#include "nrpy_odiegm.h"
-#include "butcher.c"
+#include "nrpy_odiegm_specific_methods.c"
 //TODO:
 //GSL Functionality
 //Jupyter notebook Adjusents. 
@@ -25,115 +25,9 @@
     //add more as necessary.  
 };*/
 
-void updateConstantParameters (struct constantParameters *adjust, struct constantParameters *model) {
-    //Sadly the way we've implemented this, the updating of
-    //constantParameters cannot be done automatically, it must be manual here.
-    //Set everything to match what is declared in the struct constantParameters
-    (*(struct constantParameters*)adjust).dimension = (*(struct constantParameters*)model).dimension;
-    (*(struct constantParameters*)adjust).rho = (*(struct constantParameters*)model).rho;
-}
-
-void exceptionHandler (double x, double y[], struct constantParameters *params)
-{
-    //This funciton might be empty. It's only used if the user wants to hard code some limitations 
-    //On some varaibles.
-    //Good for avoding some divide by zero errors, or going negative in a square root. 
-    if (y[0] < 0) {
-        y[0] = 0;
-    }
-    //In this case, the TOV Equations, we need to make sure the pressure doesn't go negative.
-    //Physically, it cannot, but approximation methods can cross the P=0 line
-    //We just need a hard wall to prevent that. 
-}
-
-int doWeTerminate (double x, double y[], struct constantParameters *params)
-{
-    //This funciton might be empty. It's only used if the user wants to have a special termination condition.
-    //Today we do. We terminate once the pressure hits zero, or goes below it. 
-    if (y[0] < 1e-16) {
-        return 1;
-    } else {
-        return 0;
-    }
-    //return 1 for termination.
-}
-
-void constEval (double x, const double y[], struct constantParameters *params)
-{
-    //Sometimes we want to evaluate constants in the equation that change, but do not have derivative forms.
-    //Today, we do that for the total energy density. 
-    params->rho = sqrt(y[0]) + y[0];
-    //The total energy density only depends on pressure. 
-}
-
-int diffyQEval (double x, const double y[], double dydx[], void *params)
-{
-    //GSL-adapted evaluation function. 
-    //It is possible to do this with one array, but GSL expects two. 
-
-    //dereference the struct
-    double rho = (*(struct constantParameters*)params).rho;
-    //WHY oh WHY GSL do you demand we use a VOID POINTER to the struct...
-    //https://stackoverflow.com/questions/51052314/access-variables-in-struct-from-void-pointer
-
-    //This if statement is an example of a special condition, in this case at x=0 we have a divide by zero problem. 
-    //In this case we manually know what the derivatives should be.
-    //Alternatively, we could define piecewise equations this way. 
-    if(x == 0) {
-        dydx[0] = 0; 
-        dydx[1] = 0;
-        dydx[2] = 0;
-        dydx[3] = 1;
-    }
-    else {
-        dydx[0] = -((rho+y[0])*( (2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0] ))/(x*2.0*(1.0 - (2.0*y[2])/(x)));
-        dydx[1] =  ((2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0])/(x*(1.0 - (2.0*y[2])/(x)));
-        dydx[2] = 4*M_PI*x*x*rho;
-        dydx[3] = (y[3])/(x*sqrt(1.0-(2.0*y[2])/x));
-    }
-    //This funciton is not guaranteed to work in all cases. For instance, we have manually 
-    //made an exception for xdouble butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};=0, since evaluating at 0 produces infinities and NaNs. 
-    //Be sure to declare any exceptions before running, both here and in exceptionHandler(), depending 
-    //on the kind of exception desired.  
-
-    return 0;
-    //GSL_SUCCESS is 0. We currently do not support fancy error codes. 
-}
-
-//This is the function to evaluate the known solution. Must be set manually.
-void knownQEval (double x, double y[])
-{
-    //y[0] = ...
-    //y[1] = ...
-    //This function is only used if there are known solutions. 
-    //Notably this is not the case for the TOV equations. 
-    //If you do put anything here, make SURE it has the same order as the differential equations. 
-    //In the case of TOV, that would be Pressure, nu, mass, and r-bar, in that order. 
-}
-
-void getInitialCondition (double y[])
-{
-    //be sure to have these MATCH the equations in diffyQEval
-    y[0] = 0.016714611225000002; //Pressure, can be calcualated from central baryon density. 
-    y[1] = 0.0; //nu
-    y[2] = 0.0; //mass
-    y[3] = 0.0; //r-bar
-}
-
-void assignConstants (double c[], struct constantParameters *params)
-{
-    //this really should be handled by the computer automatically, we just don't know how.
-    c[0] = params->rho;
-    //add more as required. 
-}
-
-//Remember when adjusting these to adjust the necessary parameters in main() as well:
-//step, bound, numberOfEquations, numberOfConstants, SIZE, and validate. 
-
 int main()
 {
     printf("Beginning ODE Solver \"Odie\" V9...\n");
-    printf("%15.14e", sqrt(21.0));
     
     //CURRENTLY CHECKING THE HANDOVER.
 
@@ -148,7 +42,7 @@ int main()
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 20000000; //How many steps we are going to take? This is the default termination condition. 
+    const int SIZE = 100000; //How many steps we are going to take? This is the default termination condition. 
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Spits out nonsense if no solution is provided.
 
@@ -180,7 +74,7 @@ int main()
     double absoluteMaxStep = 0.1; //An absolute cap on the step size, 0.1 by default. 
     double absoluteMinStep = 1e-10; //An absolute floor on the step size, 1e-10 by default. 
 
-    bool noAdaptiveTimestep = true; //If you don't want to take adaptive timesteps, set this to true. 
+    bool noAdaptiveTimestep = false; //If you don't want to take adaptive timesteps, set this to true. 
 
     int adamsBashforthOrder = 8; //if using the AB method, specify which order you want.
 
@@ -207,6 +101,9 @@ int main()
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
+
+    nrpy_odiegm_driver *d;
+    d = nrpy_odiegm_driver_alloc_y_new(&system, stepType,step, absoluteErrorLimit, relativeErrorLimit);
 
     int methodType = 1;
     if (stepType->rows == stepType->columns) {
@@ -321,6 +218,7 @@ int main()
 
     //SECTION II: The Loop
 
+
     //Open the file we'll be writing data to. 
     FILE *fp;
     fp = fopen("oData.txt","w");
@@ -375,6 +273,42 @@ int main()
         //printf("\n");
         fprintf(fp,"\n");
     }
+
+        //Secondary Test:
+    FILE *fp2;
+    fp2 = fopen("ooData.txt","w");
+    //This is where we test the GSL methods without destroying anything else. 
+
+    for (int i = 0; i < SIZE; i++){
+        //And here we need some work... 
+
+        nrpy_odiegm_evolve_apply(d->e, d->c, d->s, &system, NULL, 0.0, &step, y);
+
+            //Uncomment for live updates.
+            //printf("Position:,\t%15.14e,\t",currentPosition);
+            fprintf(fp2, "Position:,\t%15.14e,\t",d->e->currentPosition);
+            for (int n = 0; n < numberOfEquations; n++) {
+                //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
+                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, y[n]);
+            }
+            assignConstants(c,&cp); 
+            for (int n = 0; n < numberOfConstants; n++) {
+                //printf("Constant %i:,\t%15.14e,\t",n, c[n]);
+                fprintf(fp2, "Constant %i:,\t%15.14e,\t",n, (((struct constantParameters*)(system.params))->rho));
+            }
+            //printf("\n");
+            fprintf(fp2,"\n");
+
+            if (doWeTerminate(currentPosition, y, &cp) == 1) {
+                i = SIZE;
+            }
+    }
+
+    step = 0.00001;
+    getInitialCondition(y); 
+    constEval(currentPosition, y, &cp);
+
+    //END GSL TEST.
 
     //Keep in mind that if both are set to true, both lines are printed. This is to ensure the genreated file cycles through 
     //rows of output identically at the start and throughout the program. 
@@ -1115,6 +1049,8 @@ int main()
     // basic reference: https://www.tutorialspoint.com/cprogramming/c_file_io.htm
     // used to be a file converter here, now there isn't, we just close the file. 
     fclose(fp);
+
+    fclose(fp2);
 
     printf("ODE Solver \"Odie\" V9 Shutting Down...\n");
     return 0;

@@ -9,6 +9,7 @@
 //const nrpy_odiegm_step_type *nrpy_odiegm_step_euler;
 //nrpy_odiegm_step_euler->order = 1;
 
+
 double butcherEuler[2][2] = {{0.0,0.0},{1.0,1.0}};
 const nrpy_odiegm_step_type nrpy_odiegm_step_euler0 = {2,2,&butcherEuler};
 const nrpy_odiegm_step_type *nrpy_odiegm_step_euler = &nrpy_odiegm_step_euler0;
