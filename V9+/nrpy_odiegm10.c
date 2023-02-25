@@ -657,11 +657,13 @@ int main()
                         //since the definition of the error limiter uses a derivative, we cannot use it to limit the constant's error. 
                         //We originally had the error limiter set its own values. 
                         //GSL's formatting requries us to change this. 
+                        if (i > 96 && i < 102) {printf("step: %10.9e %i %10.9e\n", step, (int)i, cp.rho);}
                         system.function(currentPosition+step,ySmolSteps, errorLimiter, &cp);
                         //Now SmolSteps is used to set the errorLimiter. 
                         for (int n = 0; n<numberOfEquations; n++) {
                             errorLimiter[n] = absoluteErrorLimit + relativeErrorLimit*(ayErrorScaler*sqrt(ySmolSteps[n]*ySmolSteps[n]) + adyErrorScaler*step*sqrt(errorLimiter[n]*errorLimiter[n]));
                         }
+                        //if (i > 96 && i < 102) {printf("step: %10.9e %i %10.9e\n", step, (int)i, errorLimiter[2]);}
                         
                         //The error limiter is set for every equation. Now we need to perform checks.
 
@@ -684,6 +686,7 @@ int main()
                         } else if (ratioED <= errorLowerTolerance) {
                             //If we are 50% (or whatever value is specified) under what the error we want is, adjust. 
                             underError = true;
+
                         }
                         if (noAdaptiveTimestep == false) {
                             //If we have no trouble...
@@ -699,6 +702,7 @@ int main()
                         
                             else if (overError == true) {
                                 step = step * scaleFactor * pow(ratioED,-1.0/butcher[rows-1-methodType*quickPatch][0]);
+                                if (i == 111) {printf("step: %10.9e %i %10.9e\n", step, i, ratioED);}
                             } else { //if underError is true and overError is false is the only way to get here. The true-true situation is skipped.
                                 step = step * scaleFactor * pow(ratioED,-1.0/(butcher[rows-1-methodType*quickPatch][0]+1));
                                 errorSatisfactory = true;

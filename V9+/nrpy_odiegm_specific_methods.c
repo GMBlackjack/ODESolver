@@ -170,6 +170,9 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         counter++;
                     }
                 }
+                
+                exceptionHandler(currentPosition,y,&cp);
+                constEval(currentPosition, y,&cp);
 
 
                 //To use adaptive time-step, we need to store data at different step values:
@@ -495,7 +498,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         for (int n = 0; n<numberOfEquations; n++) {
                             errorLimiter[n] = absoluteErrorLimit + relativeErrorLimit*(ayErrorScaler*sqrt(ySmolSteps[n]*ySmolSteps[n]) + adyErrorScaler*step*sqrt(errorLimiter[n]*errorLimiter[n]));
                         }
-                        
+                        //if (i > 96 && i < 102) {printf("step: %10.9e %i %10.9e\n", step, (int)i, errorLimiter[2]);}
                         //The error limiter is set for every equation. Now we need to perform checks.
 
                         double ratioED = 0.0;
@@ -505,6 +508,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                 //pick out the largest of these ratios for use, every time. 
                             }
                         }
+
 
                         underError = false;
                         overError = false;
@@ -532,6 +536,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         
                             else if (overError == true) {
                                 step = step * scaleFactor * pow(ratioED,-1.0/butcher[rows-1-methodType*quickPatch][0]);
+                                if (i == 111) {printf("step: %10.9e %i %10.9e\n", step, i, ratioED);}
                             } else { //if underError is true and overError is false is the only way to get here. The true-true situation is skipped.
                                 step = step * scaleFactor * pow(ratioED,-1.0/(butcher[rows-1-methodType*quickPatch][0]+1));
                                 errorSatisfactory = true;
