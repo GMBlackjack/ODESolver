@@ -76,7 +76,7 @@ int main()
 
     bool noAdaptiveTimestep = false; //If you don't want to take adaptive timesteps, set this to true. 
 
-    int adamsBashforthOrder = 8; //if using the AB method, specify which order you want.
+    int adamsBashforthOrder = 4; //if using the AB method, specify which order you want.
 
     //We need to define a struct that can hold all possible constants. 
     struct constantParameters cp; 
@@ -93,11 +93,11 @@ int main()
     //All the butcher tables themselves are defined in butcher.c. 
     //We just need to create an object that gets them.
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_RK4;
+    stepType = nrpy_odiegm_step_AB;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_RK4;
+    stepType2 = nrpy_odiegm_step_AB;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
@@ -214,6 +214,10 @@ int main()
     //This evaluates any constants that might be needed for evaluating the actual differnetial equations. 
     constEval(currentPosition, y, &cp);
 
+    FILE *fp2;
+    fp2 = fopen("ooData.txt","w");
+    //This is where we test the GSL methods without destroying anything else. 
+
     //we assume that there are no exceptions to check for on initial conditions. 
 
     //SECTION II: The Loop
@@ -275,38 +279,6 @@ int main()
     }
 
         //Secondary Test:
-    FILE *fp2;
-    fp2 = fopen("ooData.txt","w");
-    //This is where we test the GSL methods without destroying anything else. 
-
-    for (int i = 0; i < SIZE; i++){
-        //And here we need some work... 
-
-        nrpy_odiegm_evolve_apply(d->e, d->c, d->s, &system, NULL, 0.0, &step, y);
-
-            //Uncomment for live updates.
-            //printf("Position:,\t%15.14e,\t",currentPosition);
-            fprintf(fp2, "Position:,\t%15.14e,\t",d->e->currentPosition);
-            for (int n = 0; n < numberOfEquations; n++) {
-                //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
-                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, y[n]);
-            }
-            assignConstants(c,&cp); 
-            for (int n = 0; n < numberOfConstants; n++) {
-                //printf("Constant %i:,\t%15.14e,\t",n, c[n]);
-                fprintf(fp2, "Constant %i:,\t%15.14e,\t",n, (((struct constantParameters*)(system.params))->rho));
-            }
-            //printf("\n");
-            fprintf(fp2,"\n");
-
-            if (doWeTerminate(currentPosition, y, &cp) == 1) {
-                i = SIZE;
-            }
-    }
-
-    step = 0.00001;
-    getInitialCondition(y); 
-    constEval(currentPosition, y, &cp);
 
     //END GSL TEST.
 
@@ -333,6 +305,7 @@ int main()
                     } 
                 }
             }
+
 
             if (methodType != 2 || (i < adamsBashforthOrder && stepType2 != nrpy_odiegm_step_AB)) {
                 //If we're not doing Adams-Bashforth, do the "normal" loop for RK-like methods.
@@ -1038,6 +1011,16 @@ int main()
                     }
                 }
 
+                if (i == 0 || i == 1) {
+                    for (int n = 0; n< numberOfEquations; n++) {
+                        for (int m = 0; m < adamsBashforthOrder; m++) {
+                            printf("%10.9e ",yValues[n][m]);
+                        } 
+                        printf("\n");
+                    }
+                printf("\n");
+            }
+
                 //And the very last thing we do in the loop is ask if we terminate it. 
                 if (doWeTerminate(bound+(i+1)*step, y, &cp) == 1) {
                     i = SIZE;
@@ -1045,6 +1028,52 @@ int main()
 
             }
         }
+
+    step = 0.00001;
+    currentPosition = bound;
+    getInitialCondition(y); 
+    constEval(currentPosition, y, &cp);
+
+    double c2[numberOfConstants];
+
+    int holder; 
+
+    for (int i = 0; i < SIZE; i++){
+        //And here we need some work... 
+
+
+
+        holder = nrpy_odiegm_evolve_apply(d->e, d->c, d->s, &system, NULL, 0.0, &step, y);
+
+
+            //Uncomment for live updates.
+            //printf("Position:,\t%15.14e,\t",currentPosition);
+            fprintf(fp2, "Position:,\t%15.14e,\t",d->e->currentPosition);
+            for (int n = 0; n < numberOfEquations; n++) {
+                //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
+                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, y[n]);
+            }
+                
+            constEval(currentPosition, y, &cp);
+            assignConstants(c2,&cp); //Something goes wrong HERE. 
+            //Okay yeah forgot our own implementation, of course it goes wrong... 
+
+                                    counter = 0;
+
+            for (int n = 0; n < numberOfConstants; n++) {
+                //printf("Constant %i:,\t%15.14e,\t",n, c[n]);
+                fprintf(fp2, "Constant %i:,\t%15.14e,\t",n, c2[n]);
+            }
+            //printf("\n");
+            fprintf(fp2,"\n");
+
+            
+
+            if (doWeTerminate(d->e->currentPosition, y, &cp) == 1) {
+                i = SIZE;
+            }
+    }
+
     //SECTION III: Analysis
     //Minor post-processing goes here. 
     //Anything advanced will need to be done in a data analysis program. 

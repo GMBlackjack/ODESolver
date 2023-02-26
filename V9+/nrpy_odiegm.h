@@ -39,7 +39,9 @@ typedef struct {
   int methodType; //can be calculated from above, but is easier to just store. 0,1,2 values. 
   int adamsBashforthOrder; //order if an AB method is used.
   size_t dimension;
-  void *state; //may be entirely unecessary. 
+  void *yValues; //The extremely funky parameter that hides a 2D array, used when
+  //the past steps are important for AB method.  
+  //Stored in step since it needs access to adamsBashforthOrder for allocation.
 } nrpy_odiegm_step;
 
 typedef struct {
@@ -65,8 +67,8 @@ typedef struct {
 typedef struct
 {
   size_t dimension;
-  double *y0; //the y array that stores the values. 
-  double *yerr;
+  double *y0; 
+  double *yerr; 
   double *dydt_in;
   double *dydt_out;
   double last_step;
@@ -78,15 +80,13 @@ typedef struct
   bool validate;
   //const nrpy_odiegm_driver *driver;
   //NO SELF REFERENCING LOOPS! BAD! 
-  void *yValues; //The extremely funky parameter that hides a 2D array, used when
-  //the past steps are important for AB method. 
 } nrpy_odiegm_evolve;
 
 typedef struct {
     const nrpy_odiegm_system *sys; /* ODE system */
-    nrpy_odiegm_step *s;           /* stepper object */
-    nrpy_odiegm_control *c;        /* control object */
     nrpy_odiegm_evolve *e;         /* evolve object */
+    nrpy_odiegm_control *c;
+    nrpy_odiegm_step *s;
     double h;                     /* step size */
     double hmin;                  /* minimum step size allowed */
     double hmax;                  /* maximum step size allowed */
@@ -113,6 +113,15 @@ nrpy_odiegm_step_alloc (const nrpy_odiegm_step_type * T, size_t dim)
     s->methodType = 2; //AB method. 
     s->adamsBashforthOrder = 4; //default order chosen, if user wants control they will specify elsewhere. 
   }
+
+  double emptyArray[dim][s->adamsBashforthOrder];
+  for (int n = 0; n < dim; n++) {
+    for (int m = 0; m < s->adamsBashforthOrder; m++) {
+      emptyArray[n][m] = 0;
+    }
+  }
+  s->yValues = &emptyArray;
+
   return s;
 }
 
@@ -133,8 +142,7 @@ nrpy_odiegm_evolve_alloc (size_t dim)
   e->bound = 0.0; //This will need to be adjusted to handle other starting positions. 
   e->currentPosition = e->bound;
   e->noAdaptiveTimestep = false; //for now, this one will be set with the other methods. 
-  e->validate = false; //this one will need to be manually set
-  //void *yValues; //worry about later. 
+  e->validate = false; //this one will need to be manually set 
   return e;
 }
 
@@ -174,6 +182,7 @@ nrpy_odiegm_driver * nrpy_odiegm_driver_alloc_y_new (const nrpy_odiegm_system * 
     const size_t dim = sys->dimension;
     state->sys = sys;
     state->s = nrpy_odiegm_step_alloc (T, dim);
+
     state->e = nrpy_odiegm_evolve_alloc (dim);
     state->h = hstart;
     state->hmin = 0.0;
