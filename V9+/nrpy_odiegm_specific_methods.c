@@ -137,7 +137,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
                 double step = *h; //last_step contains the size of the step we took last time, or the initial step.
 
-                int methodType = s->methodType;
+                int methodType = s->methodType; //THE METHOD TYPE PROBLEM, NEED TO ADJUST! 
                 bool validate = e->validate;
                 unsigned long int i = e->count;
                 int rows = s->type->rows;
@@ -166,7 +166,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
                 
 
-                if (i == 0 && methodType == 2) {
+                if (i == 0 && adamsBashforthOrder != 0) {
                     //first time initialization.
                     for (int n = 0; n< numberOfEquations; n++) {
                         yValues[n][0] = y[n];
@@ -186,7 +186,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
                                                     counter = 0;
 
-        if (i == 0 || i ==1) {
+        /*if (i == 0 || i ==1) {
         printf("\n");
         for (int n = 0; n< numberOfEquations; n++) {
             for (int m = 0; m < adamsBashforthOrder; m++) {
@@ -196,7 +196,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
             printf("\n");
         }
         printf("\n");
-    } 
+    } */
 
                 const nrpy_odiegm_step_type * stepType;
                 stepType = s->type;
@@ -304,7 +304,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                             
                             //For AB method we only go through once, but do so with some additional operations. 
 
-                            if (i == 0 && iteration == 1 && validate == false && methodType == 0) {
+                            if (i == 0 && iteration == 1 && validate == false && methodType == 0 && adamsBashforthOrder == 0) {
                                 //don't take unecessary steps, if we are on the first step and have no need for the large step, ignore it.
                                 //Since we always want the first step to go through don't bother calculating things we don't need. 
                                 iteration = 2;
@@ -533,7 +533,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
                             }
 
-                            if (methodType == 2) {
+                            if (adamsBashforthOrder != 0) {
                                 iteration = 4;
                                 //We only iterate once for AB. 
                                 for (int n = 0; n < numberOfEquations; n++) {
@@ -545,7 +545,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         //time to calculate some errors and see if we move on to the next step. 
                         //First, from our parameters declared at the beginning, determine what our error limit is. 
                         //Using GSL's version we frist estimate our errro based on what we know.
-                        if (i != 0 && methodType != 2) {
+                        if (i != 0 && adamsBashforthOrder == 0) {
                             //Literally none of this is used for the AB method. 
                             for (int n = 0; n<numberOfEquations; n++) {
                                 errorEstimate[n] = sqrt((yBigStep[n] - ySmolSteps[n])*(yBigStep[n] - ySmolSteps[n]))* errorSafety;
@@ -601,7 +601,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                             
                                 else if (overError == true) {
                                     step = step * scaleFactor * pow(ratioED,-1.0/butcher[rows-1-methodType*quickPatch][0]);
-                                    if (i == 111) {printf("step: %10.9e %lu %10.9e\n", step, i, ratioED);}
                                 } else { //if underError is true and overError is false is the only way to get here. The true-true situation is skipped.
                                     step = step * scaleFactor * pow(ratioED,-1.0/(butcher[rows-1-methodType*quickPatch][0]+1));
                                     errorSatisfactory = true;
@@ -668,7 +667,8 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
                     //Below is for when we get Hybrid methods working. 
 
-                    /*if (stepType == nrpy_odiegm_step_AB) {
+                    if (adamsBashforthOrder > 0) {
+                    //There's currently not a way to figure this out...
                         //At the END of every loop, we "shift" the values in the array "down" one space, that is, into the "past"
                         //Present values are 0, previous step is 1, step before that is 2, etc. 
                         for (int n = 0; n < numberOfEquations; n++) {
@@ -681,7 +681,8 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                             //present values update to what we just calculated. 
                             //We have now completed stepping. 
                         }  
-                    }*/
+                    }
+
                 } else {
 
 
@@ -801,7 +802,17 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     printf("\n");
                 }*/
 
-
+            /*if (i == 0 || i ==1) {
+        printf("\n");
+        for (int n = 0; n< numberOfEquations; n++) {
+            for (int m = 0; m < adamsBashforthOrder; m++) {
+                printf("2 %10.9e ",yValues[n][m]);
+                counter++;
+            } 
+            printf("\n");
+        }
+        printf("\n");
+    }*/
     
     counter = 0;
 
@@ -809,20 +820,28 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         //Put the new yValues back into the stored array. 
         for (int n = 0; n< numberOfEquations; n++) {
             for (int m = 0; m < adamsBashforthOrder; m++) {
+                if (i == 0 || i ==1) {
+                    //printf("%10.9e ",yValues[n][m]);
+                    //printf("%10.9e \n",*((double *)(*s).yValues+counter));
+                }
                 *((double *)(*s).yValues+counter) = yValues[n][m]; //Gotta fill in an array... joy...
                 if (i == 0 || i ==1) {
                     //printf("%10.9e ",yValues[n][m]);
                     //printf("%10.9e \n",*((double *)(*s).yValues+counter));
+                    //printf("\n");
                 }
                 counter++;
             } 
         }
     }
+            if (adamsBashforthOrder != 0) {
                 for (int n = 0; n< numberOfEquations; n++) {
                     y[n] = yValues[n][0];
                     //NO CLUE why this is necessary but APPARENTLY IT IS. 
                 }
-                        counter = 0;
+            }
+                        /*counter = 0;
+            
 
         if (i == 0 || i ==1) {
         printf("\n");
@@ -835,6 +854,20 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         }
         printf("\n");
     }
+
+                            counter = 0;
+
+        if (i == 0 || i ==1) {
+        printf("\n");
+        for (int n = 0; n< numberOfEquations; n++) {
+            for (int m = 0; m < adamsBashforthOrder; m++) {
+                printf("2 %10.9e ",*((double *)(*s).yValues+counter));
+                counter++;
+            } 
+            printf("\n");
+        }
+        printf("\n");
+    }*/
 
                     /*for (int o = 0; o< numberOfEquations; o++) {
                         printf("%10.9e\n",y[o]);
@@ -870,7 +903,10 @@ int nrpy_odiegm_evolve_apply_fixed_step (nrpy_odiegm_evolve * e,
                                         const nrpy_odiegm_system * dydt,
                                         double *t, const double h0,
                                         double y[]){
-    //This method performs a ton of time steps at the same step size. 
+    //This method performs a ton of time steps at the same step size. Only uset this if you don't care about printing every step!
+    e->noAdaptiveTimestep = true;
+    //nrpy_odiegm_evolve_apply(e, con, step, dydt, t, 0.0, &h0, y); //Something funky about consts here. 
+    //Loop it!
 
     return 0;
 }
@@ -878,6 +914,7 @@ int nrpy_odiegm_driver_apply (nrpy_odiegm_driver * d, double *t,
                              const double t1, double y[]){
     //Takes a step at the driver level. 
     //Seems unecessary to us.
+    //nrpy_odiegm_evolve_apply(d->e, d->c, d->s, d->system, t, 0.0, &h0, y);
 
     return 0;
 }
@@ -887,6 +924,7 @@ int nrpy_odiegm_driver_apply_fixed_step (nrpy_odiegm_driver * d, double *t,
                                         double y[]){
     //Takes several steps of identical size at the driver level.  
     //Seems unecessary to us.
+    //Just call evolve_apply. 
 
     return 0;
 }

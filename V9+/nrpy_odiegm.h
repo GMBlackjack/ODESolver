@@ -3,6 +3,8 @@
 #include <math.h>
 #include <stdbool.h>
 
+double zeroArray[19][19] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}};
+
 typedef struct {
     int (*function) (double x, const double y[], double dydx[], void *params);
     //The function passed to this struct contains the definitions of the differnetial equations. 
@@ -21,6 +23,7 @@ typedef struct {
     //to match GSL's form explicitly, it just needs to define the method.
     int rows; 
     int columns; //since we are passing a void pointer to do this, we need a way
+    int order; //record the order, stop with the sillyness if we can. 
     //to know how large it is in the end.
     //These are set in butcher.c.
     //void *(*alloc) (size_t dim); //Adding this breaks the array, we can't have it. 
@@ -111,7 +114,7 @@ nrpy_odiegm_step_alloc (const nrpy_odiegm_step_type * T, size_t dim)
   }
   if (T->rows == 19) {
     s->methodType = 2; //AB method. 
-    s->adamsBashforthOrder = 4; //default order chosen, if user wants control they will specify elsewhere. 
+    s->adamsBashforthOrder = 13; //default order chosen, if user wants control they will specify elsewhere. 
   }
 
   double emptyArray[dim][s->adamsBashforthOrder];
@@ -120,7 +123,7 @@ nrpy_odiegm_step_alloc (const nrpy_odiegm_step_type * T, size_t dim)
       emptyArray[n][m] = 0;
     }
   }
-  s->yValues = &emptyArray;
+  s->yValues = &zeroArray;
 
   return s;
 }
@@ -178,7 +181,7 @@ nrpy_odiegm_driver * nrpy_odiegm_driver_alloc_y_new (const nrpy_odiegm_system * 
     //Initializes an ODE driver system with control object of type y_new.
 
     nrpy_odiegm_driver *state;
-    state = (nrpy_odiegm_driver *) calloc (1, sizeof (nrpy_odiegm_driver));
+    state = (nrpy_odiegm_driver *) calloc (1, sizeof (nrpy_odiegm_driver)); //valgrind doesn't like this line. 
     const size_t dim = sys->dimension;
     state->sys = sys;
     state->s = nrpy_odiegm_step_alloc (T, dim);
