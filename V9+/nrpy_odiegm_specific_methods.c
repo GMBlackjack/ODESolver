@@ -18,7 +18,7 @@ void updateConstantParameters (struct constantParameters *adjust, struct constan
     (*(struct constantParameters*)adjust).rho = (*(struct constantParameters*)model).rho;
 }
 
-void exceptionHandler (double x, double y[], struct constantParameters *params)
+void exceptionHandler (double x, double y[])
 {
     //This funciton might be empty. It's only used if the user wants to hard code some limitations 
     //On some varaibles.
@@ -35,7 +35,7 @@ int doWeTerminate (double x, double y[], struct constantParameters *params)
 {
     //This funciton might be empty. It's only used if the user wants to have a special termination condition.
     //Today we do. We terminate once the pressure hits zero, or goes below it. 
-    if (y[0] < 1e-16) {
+    if (x > 2) {
         return 1;
     } else {
         return 0;
@@ -51,15 +51,21 @@ void constEval (double x, const double y[], struct constantParameters *params)
     //The total energy density only depends on pressure. 
 }
 
-int diffyQEval (double x, const double y[], double dydx[], void *params)
+int diffyQEval (double x, double y[], double dydx[], void *params)
 {
     //GSL-adapted evaluation function. 
     //It is possible to do this with one array, but GSL expects two. 
+
+    //Always check for exceptions first, then perform evaluations. 
+    exceptionHandler(x,y);
+    constEval(x,y,params);
 
     //dereference the struct
     double rho = (*(struct constantParameters*)params).rho;
     //WHY oh WHY GSL do you demand we use a VOID POINTER to the struct...
     //https://stackoverflow.com/questions/51052314/access-variables-in-struct-from-void-pointer
+
+
 
     //This if statement is an example of a special condition, in this case at x=0 we have a divide by zero problem. 
     //In this case we manually know what the derivatives should be.
@@ -126,13 +132,20 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 //OR do the "normal" loop if using a hybrid AB approach, until we hit the AB order.
                 //i represents how many steps have been taken. 0 is the initial condition, that is, the variable `bound`.
 
+                //First off, check if we're at the edge or not. 
+                if (*t + *h > t1) {
+                    *h = t1 - *t;
+                    //If we're going past an endpoint we want, reduce the step size. 
+                    //Otherwise continue as normal. 
+                    //no need to stop the adaptive time step! If we need to increase the size, we
+                    //still report the smaller value, so it'll go through. 
+                }
+
                 //Gotta read in a few things...
 
                 int numberOfEquations = (int)(dydt->dimension);
 
-                int numberOfConstants = (int)((*(struct constantParameters*)(dydt->params)).dimension);
-                struct constantParameters cp;
-                cp.dimension = numberOfConstants;
+
                 //Need to check to see if these values are being assigned correctly. 
 
                 double step = *h; //last_step contains the size of the step we took last time, or the initial step.
@@ -142,7 +155,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 unsigned long int i = e->count;
                 int rows = s->type->rows;
                 int columns = s->type->columns;
-                double currentPosition = e->currentPosition;
+                double currentPosition = *t;
                 double bound = e->bound;
                 bool noAdaptiveTimestep = e->noAdaptiveTimestep;
                 int adamsBashforthOrder = s->adamsBashforthOrder;
@@ -234,10 +247,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         //but now we have to get rid of it so the algorithm doesn't freak out later.             
                     }
                 }
-                
-                exceptionHandler(currentPosition,y,&cp);
-                constEval(currentPosition, y,&cp);
-                
 
                 if (methodType != 2) {
                     //To use adaptive time-step, we need to store data at different step values:
@@ -249,20 +258,13 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     //These are here for validation only. We would rather not declare them at all, but they have to be declared outside the loop
                     //So the information within can be stored through the iterations. 
 
-                    struct constantParameters cpBigStep; 
-
-                    updateConstantParameters(&cpBigStep, &cp);
-
-                    struct constantParameters cpSmolSteps; 
-
-                    updateConstantParameters(&cpSmolSteps, &cp);
                     //This is the rather ugly way to assign the values of the constants we care about. 
                     //Notably this is NOT GENERALIZED, and it NEEDS TO BE. (Wait, maybe it is now?)
 
                     //One could argue that since the small steps will become our result we shouldn't declare it, however we are actually
                     //NOT going to assign them to the actual answer y until we compare and run the adaptive
                     //time-step algorithm. We might throw out all the data and need to run it again! 
-                    double errorEstimate[numberOfEquations+numberOfConstants];
+                    double errorEstimate[numberOfEquations];
                     //even if we aren't limiting the constants, we can still report their error. 
                     
                     double originalStep = step;
@@ -351,11 +353,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                             double dyOut[numberOfEquations];
                             //GSL demands that we use two separate arrays for y and y', so here's y'. 
 
-                            double cInsert[numberOfConstants];
-
-                            struct constantParameters cpInsert; 
-
-                            updateConstantParameters(&cpInsert, &cp);
                             //Create an array to hold the constants we want.
                             //Find way to generalize. 
 
@@ -383,15 +380,9 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                     //we would use an undeclared K-value the butcher table would have a zero.
                                     //You know, just in case something goes wrong. 
                                 }
-                                
-                                //Check for any limitations on our results. 
-                                exceptionHandler(xInsert,yInsert,&cpInsert);
-
-                                //Evaluate the constants. 
-                                constEval(xInsert, yInsert,&cpInsert);
 
                                 //Now we actually evaluate the differential equations.
-                                dydt->function(xInsert, yInsert, dyOut, &cpInsert);
+                                dydt->function(xInsert, yInsert, dyOut, dydt->params);
                                 //yInsert goes in, dyOut comes out. Originally yInsert was overridden, this no longer happens. 
 
                                 for (int n = 0; n < numberOfEquations; n++) {
@@ -412,9 +403,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                             }
                             //Note that we specifically set ySmol to the value, not anything else. 
                             //This is because we wish to avoid abusing if statements and would like to do the below if only once.
-                            exceptionHandler(currentPosition+(1.0+shift)*step*scale,ySmolSteps,&cpSmolSteps);
-                            constEval(currentPosition+(1.0+shift)*step*scale,ySmolSteps,&cpSmolSteps); 
-                            //Check for exceptions and evaluate constants. 
 
                             if (iteration == 1 || (i == 0 && validate == true && methodType == 1)) {
                                 for (int n = 0; n<numberOfEquations; n++) {
@@ -551,14 +539,12 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                 errorEstimate[n] = sqrt((yBigStep[n] - ySmolSteps[n])*(yBigStep[n] - ySmolSteps[n]))* errorSafety;
                                 //The 4/15 is taken from GSL's solver, a 'saftey factor' with unknown reasoning. 
                             }
-                            errorEstimate[1+numberOfEquations] = sqrt((cpBigStep.rho - cpSmolSteps.rho)*(cpBigStep.rho - cpSmolSteps.rho))*errorSafety;
-                            //find a way to generalize to any number of constants in the struct. 
 
                             double errorLimiter[numberOfEquations];
                             //since the definition of the error limiter uses a derivative, we cannot use it to limit the constant's error. 
                             //We originally had the error limiter set its own values. 
                             //GSL's formatting requries us to change this. 
-                            dydt->function(currentPosition+step,ySmolSteps, errorLimiter, &cp);
+                            dydt->function(currentPosition+step,ySmolSteps, errorLimiter, dydt->params);
                             //Now SmolSteps is used to set the errorLimiter. 
                             for (int n = 0; n<numberOfEquations; n++) {
                                 errorLimiter[n] = absoluteErrorLimit + relativeErrorLimit*(ayErrorScaler*sqrt(ySmolSteps[n]*ySmolSteps[n]) + adyErrorScaler*step*sqrt(errorLimiter[n]*errorLimiter[n]));
@@ -657,9 +643,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         //in any other case we use the new step. Even the case where the step wasn't actually changed. 
                     }
                     //After each step is calculated, print results. 
-                    //However, prior to printing we need to run our exception and constant evaluators one more time.
-                    exceptionHandler(currentPosition,y,&cp);
-                    constEval(currentPosition,y,&cp);
+
                     //Since we've usually been running them on yInsert, the actual y and c values have not generally seen 
                     //the restrictions applied here. 
 
@@ -694,9 +678,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
                     //validation is not available for AB methods since it doesn't really get to the steps of that order immediately. 
 
-                    struct constantParameters cpValues; 
-
-                    updateConstantParameters(&cpValues, &cp);
                     //Find a way to genrealize this assignment to any number of items in the struct. 
 
                     //This is normally where we would calulate the K values, but they are entirely unecessary here.
@@ -710,10 +691,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
                     double dyOut[numberOfEquations];
                     //GSL demands that we use two separate arrays for y and y', so here's y'. 
-
-                    struct constantParameters cpInsert; 
-
-                    updateConstantParameters(&cpInsert, &cp);
                     //Create an array to hold the constants we want.
                     //Find way to generalize. 
 
@@ -738,14 +715,8 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         }
                         //Grab the correct yValues for the proper time/location. 
 
-                        //Check for any limitations on our results. 
-                        exceptionHandler(xInsert,yInsert,&cpInsert);
-
-                        //Evaluate the constants. 
-                        constEval(xInsert, yInsert,&cpInsert);
-
                         //Now we actually evaluate the differential equations.
-                        dydt->function(xInsert, yInsert, dyOut, &cpInsert);
+                        dydt->function(xInsert, yInsert, dyOut, dydt->params);
 
 
 
@@ -755,9 +726,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         }
                         //Keep in mind this is procedural, y isn't right until all values of m have been cycled through. 
                     }
-
-                    exceptionHandler(bound+step*(i+1),y,&cp);
-                    constEval(bound+step*(i+1),y,&cp); 
             
 
                     //At the END of every loop, we "shift" the values in the array down one space, that is, into the "past"
@@ -787,33 +755,10 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
 
     *h = step;
+    *t = currentPosition;
     e->count = i+1;
-    e->currentPosition = currentPosition;
-    (((struct constantParameters*)(dydt->params))->rho) = cp.rho;
+
     //UPDATE yVALUES
-    counter = 0;
-
-
-                /*for (int n = 0; n< numberOfEquations; n++) {
-                    for (int m = 0; m < adamsBashforthOrder; m++) {
-                        printf("%10.9e ",*((double *)(*s).yValues+counter));
-                        counter++;
-                    } 
-                    printf("\n");
-                }*/
-
-            /*if (i == 0 || i ==1) {
-        printf("\n");
-        for (int n = 0; n< numberOfEquations; n++) {
-            for (int m = 0; m < adamsBashforthOrder; m++) {
-                printf("2 %10.9e ",yValues[n][m]);
-                counter++;
-            } 
-            printf("\n");
-        }
-        printf("\n");
-    }*/
-    
     counter = 0;
 
     if (adamsBashforthOrder != 0) {
@@ -834,65 +779,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
             } 
         }
     }
-            if (adamsBashforthOrder != 0) {
-                for (int n = 0; n< numberOfEquations; n++) {
-                    y[n] = yValues[n][0];
-                    //NO CLUE why this is necessary but APPARENTLY IT IS. 
-                }
-            }
-                        /*counter = 0;
-            
-
-        if (i == 0 || i ==1) {
-        printf("\n");
-        for (int n = 0; n< numberOfEquations; n++) {
-            for (int m = 0; m < adamsBashforthOrder; m++) {
-                printf("2 %10.9e ",yValues[n][m]);
-                counter++;
-            } 
-            printf("\n");
-        }
-        printf("\n");
-    }
-
-                            counter = 0;
-
-        if (i == 0 || i ==1) {
-        printf("\n");
-        for (int n = 0; n< numberOfEquations; n++) {
-            for (int m = 0; m < adamsBashforthOrder; m++) {
-                printf("2 %10.9e ",*((double *)(*s).yValues+counter));
-                counter++;
-            } 
-            printf("\n");
-        }
-        printf("\n");
-    }*/
-
-                    /*for (int o = 0; o< numberOfEquations; o++) {
-                        printf("%10.9e\n",y[o]);
-                    }
-                    printf("\n");*/
-
-    //y itself ALSO needs to be updated. 
-
-            /*if (i > 0 && i < 6) {
-                int counter = 0;
-                for (int n = 0; n< numberOfEquations; n++) {
-                    for (int m = 0; m < adamsBashforthOrder; m++) {
-                        printf("%10.9e ",*((double *)(*s).yValues+counter));
-                        ++counter;
-                    } 
-                    printf("\n");
-                    for (int o = 0; o< numberOfEquations; o++) {
-                        printf("%10.9e\n",y[o]);
-                    }
-                    printf("\n");
-                }
-                printf("\n");
-             }*/
-
-
 
     return 0;                      
 }
@@ -901,20 +787,24 @@ int nrpy_odiegm_evolve_apply_fixed_step (nrpy_odiegm_evolve * e,
                                         nrpy_odiegm_control * con,
                                         nrpy_odiegm_step * step,
                                         const nrpy_odiegm_system * dydt,
-                                        double *t, const double h0,
+                                        double *t, double h0,
                                         double y[]){
-    //This method performs a ton of time steps at the same step size. Only uset this if you don't care about printing every step!
+    //This method performs a single fixed time step. 
     e->noAdaptiveTimestep = true;
-    //nrpy_odiegm_evolve_apply(e, con, step, dydt, t, 0.0, &h0, y); //Something funky about consts here. 
+    nrpy_odiegm_evolve_apply(e, con, step, dydt, t, *t+h0, &h0, y);
     //Loop it!
 
     return 0;
 }
 int nrpy_odiegm_driver_apply (nrpy_odiegm_driver * d, double *t,
                              const double t1, double y[]){
-    //Takes a step at the driver level. 
-    //Seems unecessary to us.
-    //nrpy_odiegm_evolve_apply(d->e, d->c, d->s, d->system, t, 0.0, &h0, y);
+    //Takes as many steps as requested at the driver level. 
+    //Only really useful if you don't want to report anything until the end. Which. Sure.
+    while (*t < t1) {
+        nrpy_odiegm_evolve_apply(d->e, d->c, d->s, d->sys, t, t1, &(d->h), y);
+    }
+
+
 
     return 0;
 }
@@ -922,9 +812,8 @@ int nrpy_odiegm_driver_apply_fixed_step (nrpy_odiegm_driver * d, double *t,
                                         const double h,
                                         const unsigned long int n,
                                         double y[]){
-    //Takes several steps of identical size at the driver level.  
-    //Seems unecessary to us.
-    //Just call evolve_apply. 
+    d->e->noAdaptiveTimestep = true;
+    nrpy_odiegm_driver_apply(d, t, h*(double)n, y);
 
     return 0;
 }

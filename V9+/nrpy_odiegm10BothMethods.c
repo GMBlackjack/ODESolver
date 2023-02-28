@@ -74,7 +74,7 @@ int main()
     double absoluteMaxStep = 0.1; //An absolute cap on the step size, 0.1 by default. 
     double absoluteMinStep = 1e-10; //An absolute floor on the step size, 1e-10 by default. 
 
-    bool noAdaptiveTimestep = false; //If you don't want to take adaptive timesteps, set this to true. 
+    bool noAdaptiveTimestep = true; //If you don't want to take adaptive timesteps, set this to true. 
 
     int adamsBashforthOrder = 13; //if using the AB method, specify which order you want.
 
@@ -93,11 +93,11 @@ int main()
     //All the butcher tables themselves are defined in butcher.c. 
     //We just need to create an object that gets them.
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_L6;
+    stepType = nrpy_odiegm_step_RK4;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_L6;
+    stepType2 = nrpy_odiegm_step_RK4;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
