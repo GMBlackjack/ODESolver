@@ -1,14 +1,7 @@
 #include "nrpy_odiegm.h"
 
 //A collection of butcher tables, courtesy of NRPy+.
-//This file should never be run in isolation. It just has object definitions. 
-
-//double butcher[2][2] = {{0.0,0},{1.0,1.0}};
-//const nrpy_odiegm_step_type s, *nrpy_odiegm_step_euler;
-//nrpy_odiegm_step_euler = &s;
-//const nrpy_odiegm_step_type *nrpy_odiegm_step_euler;
-//nrpy_odiegm_step_euler->order = 1;
-
+//This file should never be run in isolation. It just has "object" definitions. 
 
 double butcherEuler[2][2] = {{0.0,0.0},{1.0,1.0}};
 const nrpy_odiegm_step_type nrpy_odiegm_step_euler0 = {2,2,1,&butcherEuler};
@@ -64,7 +57,7 @@ const nrpy_odiegm_step_type *nrpy_odiegm_step_DP6 = &nrpy_odiegm_step_DP6_0;
 
 //Left in terms of floating points, as the form stored in the butcher table includes irrational numbers and other stuff. 
 //double butcherL6[8][8] = {{0.0,0,0,0,0,0,0,0},{1.0,1.0,0,0,0,0,0,0},{0.5,0.375,0.125,0,0,0,0,0},{0.6666666666666666,0.2962962962962963,0.07407407407407407,0.2962962962962963,0,0,0,0},{0.17267316464601143,0.051640768506639186,-0.04933518989886041,0.2960111393931624,-0.1256435533549298,0,0,0},{0.8273268353539885,-1.1854881643947648,-0.2363790958154253,-0.7481756236662596,0.8808545802392703,2.116515138991168,0,0},{1.0,4.50650248872424,0.6666666666666666,6.017339969931307,-4.111704479703632,-7.018914097580199,0.9401094519616178,0},{6.0,0.05,0.0,0.35555555555555557,0.0,0.2722222222222222,0.2722222222222222,0.05}};
-const double sqrt21 = 4.58257569495584;
+const double sqrt21 = 4.58257569495584; //explicitly declared to avoid the funky problems with consts. 
 double butcherL6[8][8] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0},{1.0/2.0,3.0/8.0,1.0/8.0,0.0,0.0,0.0,0.0,0.0},{2.0/3.0,8.0/27.0,2.0/27.0,8.0/27.0,0.0,0.0,0.0,0.0},{1.0/2.0 - sqrt21/14.0,-3.0/56.0 + 9.0*sqrt21/392.0,-1.0/7.0 + sqrt21/49.0,6.0/7.0 - 6.0*sqrt21/49.0,-9.0/56.0 + 3.0*sqrt21/392.0,0.0,0.0,0.0},{sqrt21/14.0 + 1.0/2.0,-51.0*sqrt21/392.0 - 33.0/56.0,-1.0/7.0 - sqrt21/49.0,-8.0*sqrt21/49.0,9.0/280.0 + 363.0*sqrt21/1960.0,sqrt21/5.0 + 6.0/5.0,0.0,0.0},{1.0,11.0/6.0 + 7.0*sqrt21/12.0,2.0/3.0,-10.0/9.0 + 14.0*sqrt21/9.0,7.0/10.0 - 21.0*sqrt21/20.0,-343.0/90.0 - 7.0*sqrt21/10.0,49.0/18.0 - 7.0*sqrt21/18.0,0.0},{6.0,1.0/20.0,0.0,16.0/45.0,0.0,49.0/180.0,49.0/180.0,1.0/20.0}};
 const nrpy_odiegm_step_type nrpy_odiegm_step_L6_0 = {8,8,6,&butcherL6};
 const nrpy_odiegm_step_type *nrpy_odiegm_step_L6 = &nrpy_odiegm_step_L6_0;

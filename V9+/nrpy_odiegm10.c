@@ -4,8 +4,8 @@
 //CLEAN
 //Valgrind
 //Validation
-//Error Printing Control
 //Backward Evolving?
+ 
 //Jupyter notebook Adjusents. 
 
 //Note: math.h requries the "-lm" arg be added at the END of tasks.json's arguments.
@@ -71,17 +71,17 @@ int main()
     //Do note that cp itself needs to be declared in constantParameters manually.
     //The methods that work with it need to be declared as well. 
 
-    nrpy_odiegm_system system = {diffyQEval,NULL,numberOfEquations,&cp};
+    nrpy_odiegm_system system = {diffyQEval,knownQEval,numberOfEquations,&cp};
     //This is the system of equations we solve.
-    //The NULL is where the Jacobian would be, a holdover from GSL formatting, even though we never use the Jacobian. 
+    //The second slot was originally the Jacobian, but we use it to pass a validation equation that may or may not be used.
 
     //Now we set up the method. 
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_DP8;
+    stepType = nrpy_odiegm_step_RK4;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_DP8;
+    stepType2 = nrpy_odiegm_step_RK4;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
@@ -207,14 +207,14 @@ int main()
     for (int i = 0; i < SIZE; i++){
         
         //Hybrid Methods require some fancy footwork, hence the if statements below. 
-        if (methodType == 2 && i < adamsBashforthOrder && stepType2 != nrpy_odiegm_step_AB) {
+        if (methodType == 2 && i == 0 && stepType2 != nrpy_odiegm_step_AB) {
             d->s->type = stepType2;
             d->s->rows = stepType2->rows;
             d->s->columns = stepType2->columns;
             d->s->methodType = 0;
             d->s->adamsBashforthOrder = adamsBashforthOrder;
             d->e->noAdaptiveTimestep = true;
-        } else if (stepType != stepType2 && methodType == 2 && i >= adamsBashforthOrder) {
+        } else if (stepType != stepType2 && methodType == 2 && i == adamsBashforthOrder) {
             d->s->type = stepType;
             d->s->rows = stepType->rows;
             d->s->columns = stepType->columns;
@@ -237,8 +237,10 @@ int main()
 
             //constEval(currentPosition, y, &cp);
             //Turns out this above line is completely unecessary. Left as comment just in case.
-            assignConstants(c,&cp);  
-
+            exceptionHandler(currentPosition,y);
+            constEval(currentPosition,y,&cp);
+            assignConstants(c,&cp);
+            //These lines are to make sure the constant updates.   
 
             for (int n = 0; n < numberOfConstants; n++) {
                 //printf("Constant %i:,\t%15.14e,\t",n, c[n]);
@@ -247,7 +249,41 @@ int main()
             //printf("\n");
             fprintf(fp2,"\n");
 
-            
+            if (reportErrorEstimates == true) {
+                //Print the error estimates we already have. 
+                fprintf(fp2, "Error Estimates:,\t");
+                for (int n = 0; n < numberOfEquations; n++) {
+                    fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,*(d->e->yerr+n)); //find a way to grab the error. 
+                }
+                //constant estimates not reported, only diffyQ values. 
+                fprintf(fp2,"\n");
+            }
+                
+            if (reportErrorActual == true) {
+                //Now if we have an actual error to compare against with, there's some more work to do. 
+                double yTruth[numberOfEquations];
+                double cTruth[numberOfConstants];
+                struct constantParameters cpTruth; 
+                //True values for everything we compare with.
+                
+                knownQEval(currentPosition,yTruth);
+                constEval(currentPosition,yTruth,&cpTruth);
+
+                assignConstants(c,&cp); 
+                assignConstants(cTruth,&cpTruth);
+                 
+                fprintf(fp2, "Errors:,\t");
+                for (int n = 0; n < numberOfEquations; n++) {
+                    fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, yTruth[n]-y[n]);
+                    fprintf(fp2, "Truth:,\t%15.14e,\t",yTruth[n]);
+                }
+                for (int n = 0; n < numberOfConstants; n++) {
+                    fprintf(fp2, "Constant %i Error:,\t%15.14e,\t",n, cTruth[n]-c[n]);
+                    fprintf(fp2, "Truth:,\t%15.14e,\t",cTruth[n]);
+                } 
+                //printf("\n");
+                fprintf(fp2,"\n");
+            }
 
             if (doWeTerminate(currentPosition, y, &cp) == 1) {
                 i = SIZE;

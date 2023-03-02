@@ -4,14 +4,17 @@
 #include <stdbool.h>
 
 double zeroArray[19][19] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}};
+//The existence of this array is evidence of us throwing up our hands and plugging the tiny hole with an entire island. 
+//No more memory leaks or overwrites, though! It solves the problem! 
 
 typedef struct {
     int (*function) (double x, double y[], double dydx[], void *params);
     //The function passed to this struct contains the definitions of the differnetial equations. 
-    int (*jacobian) (double t, const double y[], double *dfdy, double dfdt[],
-                   void *params); //The jacobian is a holdover from GSL, it will not be used in this program,
+    //int (*jacobian) (double t, const double y[], double *dfdy, double dfdt[], void *params); //The jacobian is a holdover from GSL, it will not be used in this program,
                    //Always pass NULL to this part. 
                    //If we were not making a drop-in replacement, we would just have a three-paraemeter struct.
+    int (*trueFunction) (double x, double y[]);
+    //INSTEAD we will use that slot to allow a passing of a true value! 
     size_t dimension; //For storing how big our system of equations is. 
     //Just pass it an int, usually. 
     void *params; //For storing extra constants needed to evaluate the functions. 
@@ -31,7 +34,7 @@ typedef struct {
     //Make sure to put this at the end of the struct though,
     //in case we add more parts to it, nonspecific arrays must be the last element.
 
-    //two of these step_type objects might be needd at once, depending on implementation. 
+    //two of these step_type objects might be needed at once, depending on implementation. 
 } nrpy_odiegm_step_type;
 
 typedef struct {
@@ -41,7 +44,6 @@ typedef struct {
   //to know how large it is in the end.
   int methodType; //can be calculated from above, but is easier to just store. 0,1,2 values. 
   int adamsBashforthOrder; //order if an AB method is used.
-  size_t dimension;
   void *yValues; //The extremely funky parameter that hides a 2D array, used when
   //the past steps are important for AB method.  
   //Stored in step since it needs access to adamsBashforthOrder for allocation.
@@ -60,29 +62,24 @@ typedef struct {
     double absoluteMinStep;
     double errorUpperTolerance;
     double errorLowerTolerance;
-    //We added these ourselves. 
-
-    //const nrpy_odiegm_control_type *type;
-    void *state;
-  
+    //We added these ourselves. Control the error!
+    //we suppose this means that our control object acts NOTHING like GSL's control object
+    //save that it stores error limits. 
 } nrpy_odiegm_control;
 
 typedef struct
 {
-  size_t dimension;
   double *y0; 
   double *yerr; 
-  double *dydt_in;
-  double *dydt_out;
+  //double *dydt_in;
+  //double *dydt_out; //These two values are not used as we are not using Jacobian methods. 
   double last_step;
   double bound; //the point at which we started is sometimes important. 
   double currentPosition;
   unsigned long int count; //equivalent to i. 
-  unsigned long int failed_steps;
+  //unsigned long int failed_steps; //we automatically handle tossing out "bad" steps.
   bool noAdaptiveTimestep;
   bool validate;
-  //const nrpy_odiegm_driver *driver;
-  //NO SELF REFERENCING LOOPS! BAD! 
 } nrpy_odiegm_evolve;
 
 typedef struct {
@@ -91,10 +88,7 @@ typedef struct {
     nrpy_odiegm_control *c;
     nrpy_odiegm_step *s;
     double h;                     /* step size */
-    double hmin;                  /* minimum step size allowed */
-    double hmax;                  /* maximum step size allowed */
-    unsigned long int n;          /* number of steps taken; i */
-    unsigned long int nmax;       /* Maximum number of steps allowed; SIZE*/
+    //Curiously, this is where the step size is held. Usually it's passed to functions directly though. 
 } nrpy_odiegm_driver;
 
 //Allocation Functions below. 
@@ -104,9 +98,6 @@ nrpy_odiegm_step_alloc (const nrpy_odiegm_step_type * T, size_t dim)
 {
   nrpy_odiegm_step *s = (nrpy_odiegm_step *) malloc (sizeof (nrpy_odiegm_step));
   s->type = T;
-  s->dimension = dim;
-  //s->state = s->type->alloc (dim);
-  //We will see if we can avoid setting the state. 
   s->methodType = 1;
   s->adamsBashforthOrder = 0;
   if (T->rows == T->columns) {
@@ -134,14 +125,10 @@ nrpy_odiegm_evolve_alloc (size_t dim)
   nrpy_odiegm_evolve *e = (nrpy_odiegm_evolve *) malloc (sizeof (nrpy_odiegm_evolve));
   e->y0 = (double *) malloc (dim * sizeof (double));
   e->yerr = (double *) malloc (dim * sizeof (double));
-  e->dydt_in = (double *) malloc (dim * sizeof (double));
-  e->dydt_out = (double *) malloc (dim * sizeof (double));
-  e->dimension = dim;
+  //e->dimension = dim; //this value turns out to be completely unecessary as the system stores the dimension. 
   e->count = 0;
-  e->failed_steps = 0; //One wonders if this is strictly necessary...
+
   e->last_step = 0.0; 
-  //e->driver = NULL; 
-  //LOOP! BAD! *newspaper bap to snoot*
   e->bound = 0.0; //This will need to be adjusted to handle other starting positions. 
   e->currentPosition = e->bound;
   e->noAdaptiveTimestep = false; //for now, this one will be set with the other methods. 
@@ -182,22 +169,15 @@ nrpy_odiegm_driver * nrpy_odiegm_driver_alloc_y_new (const nrpy_odiegm_system * 
 
     nrpy_odiegm_driver *state;
     state = (nrpy_odiegm_driver *) calloc (1, sizeof (nrpy_odiegm_driver)); //valgrind doesn't like this line. 
-    const size_t dim = sys->dimension;
+    const size_t dim = sys->dimension; 
     state->sys = sys;
     state->s = nrpy_odiegm_step_alloc (T, dim);
 
     state->e = nrpy_odiegm_evolve_alloc (dim);
     state->h = hstart;
-    state->hmin = 0.0;
-    state->hmax = 1.0;
-    state->nmax = 0;
-    state->n = 0;
-    state->c = NULL;
-  if (epsabs >= 0.0 && epsrel >= 0.0)
-    {
-      state->c = nrpy_odiegm_control_y_new (epsabs, epsrel);
-      //Otherwise we're not using a method that needs step size control. 
-    }
+
+    state->c = nrpy_odiegm_control_y_new (epsabs, epsrel);
+    //Otherwise we're not using a method that needs step size control. 
   //There were functions here that assigned the driver to the objects contained in the driver.
   //We will not be doing that nonsense. 
 
@@ -208,25 +188,18 @@ nrpy_odiegm_driver * nrpy_odiegm_driver_alloc_y_new (const nrpy_odiegm_system * 
 //Only necessary since we want a drop in replacement.
 void nrpy_odiegm_control_free (nrpy_odiegm_control * c)
 {
-  //RETURN_IF_NULL (c);
-  //c->type->free (c->state);
   free (c);
 }
 void nrpy_odiegm_evolve_free (nrpy_odiegm_evolve * e)
 {
-  //RETURN_IF_NULL (e);
-  free (e->dydt_out);
-  free (e->dydt_in);
+  //free (e->dydt_out);
+  //free (e->dydt_in); //these two are for jacobians, not used. 
   free (e->yerr);
   free (e->y0);
   free (e);
 }
 void nrpy_odiegm_step_free (nrpy_odiegm_step * s)
-{
-  //RETURN_IF_NULL (s);
-  //s->type->free (s->state);
-  //free (s->type);
-  //These look to be unneeded. 
+{ 
   free (s);
 }
 void nrpy_odiegm_driver_free (nrpy_odiegm_driver * state)

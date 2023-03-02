@@ -3,123 +3,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include "butcher.c"
-
-struct constantParameters { 
-    int dimension; //number that says how many we have. 
-    double rho;
-    //add more as necessary.  
-};
-
-void updateConstantParameters (struct constantParameters *adjust, struct constantParameters *model) {
-    //Sadly the way we've implemented this, the updating of
-    //constantParameters cannot be done automatically, it must be manual here.
-    //Set everything to match what is declared in the struct constantParameters
-    (*(struct constantParameters*)adjust).dimension = (*(struct constantParameters*)model).dimension;
-    (*(struct constantParameters*)adjust).rho = (*(struct constantParameters*)model).rho;
-}
-
-void exceptionHandler (double x, double y[])
-{
-    //This funciton might be empty. It's only used if the user wants to hard code some limitations 
-    //On some varaibles.
-    //Good for avoding some divide by zero errors, or going negative in a square root. 
-    if (y[0] < 0) {
-        y[0] = 0;
-    }
-    //In this case, the TOV Equations, we need to make sure the pressure doesn't go negative.
-    //Physically, it cannot, but approximation methods can cross the P=0 line
-    //We just need a hard wall to prevent that. 
-}
-
-int doWeTerminate (double x, double y[], struct constantParameters *params)
-{
-    //This funciton might be empty. It's only used if the user wants to have a special termination condition.
-    //Today we do. We terminate once the pressure hits zero, or goes below it. 
-    if (x > 2) {
-        return 1;
-    } else {
-        return 0;
-    }
-    //return 1 for termination.
-}
-
-void constEval (double x, const double y[], struct constantParameters *params)
-{
-    //Sometimes we want to evaluate constants in the equation that change, but do not have derivative forms.
-    //Today, we do that for the total energy density. 
-    params->rho = sqrt(y[0]) + y[0];
-    //The total energy density only depends on pressure. 
-}
-
-int diffyQEval (double x, double y[], double dydx[], void *params)
-{
-    //GSL-adapted evaluation function. 
-    //It is possible to do this with one array, but GSL expects two. 
-
-    //Always check for exceptions first, then perform evaluations. 
-    exceptionHandler(x,y);
-    constEval(x,y,params);
-
-    //dereference the struct
-    double rho = (*(struct constantParameters*)params).rho;
-    //WHY oh WHY GSL do you demand we use a VOID POINTER to the struct...
-    //https://stackoverflow.com/questions/51052314/access-variables-in-struct-from-void-pointer
-
-
-
-    //This if statement is an example of a special condition, in this case at x=0 we have a divide by zero problem. 
-    //In this case we manually know what the derivatives should be.
-    //Alternatively, we could define piecewise equations this way. 
-    if(x == 0) {
-        dydx[0] = 0; 
-        dydx[1] = 0;
-        dydx[2] = 0;
-        dydx[3] = 1;
-    }
-    else {
-        dydx[0] = -((rho+y[0])*( (2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0] ))/(x*2.0*(1.0 - (2.0*y[2])/(x)));
-        dydx[1] =  ((2.0*y[2])/(x) + 8.0*M_PI*x*x*y[0])/(x*(1.0 - (2.0*y[2])/(x)));
-        dydx[2] = 4*M_PI*x*x*rho;
-        dydx[3] = (y[3])/(x*sqrt(1.0-(2.0*y[2])/x));
-    }
-    //This funciton is not guaranteed to work in all cases. For instance, we have manually 
-    //made an exception for xdouble butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};=0, since evaluating at 0 produces infinities and NaNs. 
-    //Be sure to declare any exceptions before running, both here and in exceptionHandler(), depending 
-    //on the kind of exception desired.  
-
-    return 0;
-    //GSL_SUCCESS is 0. We currently do not support fancy error codes. 
-}
-
-//This is the function to evaluate the known solution. Must be set manually.
-void knownQEval (double x, double y[])
-{
-    //y[0] = ...
-    //y[1] = ...
-    //This function is only used if there are known solutions. 
-    //Notably this is not the case for the TOV equations. 
-    //If you do put anything here, make SURE it has the same order as the differential equations. 
-    //In the case of TOV, that would be Pressure, nu, mass, and r-bar, in that order. 
-}
-
-void getInitialCondition (double y[])
-{
-    //be sure to have these MATCH the equations in diffyQEval
-    y[0] = 0.016714611225000002; //Pressure, can be calcualated from central baryon density. 
-    y[1] = 0.0; //nu
-    y[2] = 0.0; //mass
-    y[3] = 0.0; //r-bar
-}
-
-void assignConstants (double c[], struct constantParameters *params)
-{
-    //this really should be handled by the computer automatically, we just don't know how.
-    c[0] = params->rho;
-    //add more as required. 
-}
-
-//Remember when adjusting these to adjust the necessary parameters in main() as well:
-//step, bound, numberOfEquations, numberOfConstants, SIZE, and validate. 
+#include "nrpy_odiegm_user_methods.c"
 
 //The actual stepping functions. 
 int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
@@ -139,12 +23,12 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     //Otherwise continue as normal. 
                     //no need to stop the adaptive time step! If we need to increase the size, we
                     //still report the smaller value, so it'll go through. 
+                    e->last_step = 1.0; //this is generally not used but the user might want it or something. 
                 }
 
                 //Gotta read in a few things...
 
                 int numberOfEquations = (int)(dydt->dimension);
-
 
                 //Need to check to see if these values are being assigned correctly. 
 
@@ -197,24 +81,8 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     }
                 }
 
-                                                    counter = 0;
-
-        /*if (i == 0 || i ==1) {
-        printf("\n");
-        for (int n = 0; n< numberOfEquations; n++) {
-            for (int m = 0; m < adamsBashforthOrder; m++) {
-                printf("1 %10.9e ",yValues[n][m]);
-                counter++;
-            } 
-            printf("\n");
-        }
-        printf("\n");
-    } */
-
                 const nrpy_odiegm_step_type * stepType;
                 stepType = s->type;
-
-                
 
                 counter = 0;
                 if (methodType == 2) {
@@ -446,9 +314,9 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                     //Create 2 arrays to hold the true values. 
                                     double truthValidateBig[numberOfEquations];
                                     double truthValidateSmol[numberOfEquations];
-                                    //Fill it with the true values. 
-                                    knownQEval(bound+step,truthValidateBig);
-                                    knownQEval(bound+step*0.5,truthValidateSmol);
+                                    //Fill it with the true values.
+                                    dydt->trueFunction(bound+step,truthValidateBig);
+                                    dydt->trueFunction(bound+step*0.5,truthValidateSmol);
                                     //Then from this calculate the estimated errors.
 
                                     for (int n = 0; n < numberOfEquations; n++) {
@@ -483,8 +351,8 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                         double truthValidateBig[numberOfEquations];
                                         double truthValidateSmol[numberOfEquations];
                                         //Fill it with the true values. 
-                                        knownQEval(bound+step,truthValidateBig);
-                                        knownQEval(bound+step*0.5,truthValidateSmol);
+                                        dydt->trueFunction(bound+step,truthValidateBig);
+                                        dydt->trueFunction(bound+step*0.5,truthValidateSmol);
                                         
                                         //Then from this calculate the estimated errors.
                                         for (int n = 0; n < numberOfEquations; n++) {
@@ -494,8 +362,8 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                             printf("Order of ErrorA: %i\t%f\n",n, log2(truthValidateBig[n]/truthValidateSmol[n]));
                                             //print out the estimated error. 
                                         }
-                                        knownQEval(bound+step,truthValidateBig);
-                                        knownQEval(bound+step*0.5,truthValidateSmol);
+                                        dydt->trueFunction(bound+step,truthValidateBig);
+                                        dydt->trueFunction(bound+step*0.5,truthValidateSmol);
 
                                         for (int n = 0; n < numberOfEquations; n++) {
                                             truthValidateBig[n] = (truthValidateBig[n] - ySmolStepsHalf[n]);
@@ -558,6 +426,12 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                     ratioED = errorEstimate[n]/errorLimiter[n];
                                     //pick out the largest of these ratios for use, every time. 
                                 }
+                            }
+
+                            counter = 0;
+                            for (int n = 0; n< numberOfEquations; n++) {
+                                *((double *)(*e).yerr+counter) = errorEstimate[n]; //Gotta fill in an array... joy...
+                                counter++;
                             }
 
 
@@ -758,6 +632,8 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
     *t = currentPosition;
     e->count = i+1;
 
+    //This is here to make sure the values we pass back are the correct ones, no matter what. 
+
     //UPDATE yVALUES
     counter = 0;
 
@@ -778,6 +654,14 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 counter++;
             } 
         }
+    }
+
+    //in case the user needs it for some reason we also save the result to the evolve object.
+
+    counter = 0;
+    for (int n = 0; n< numberOfEquations; n++) {
+        *((double *)(*e).y0+counter) = y[n]; //Gotta fill in an array... joy...
+        counter++;
     }
 
     return 0;                      
