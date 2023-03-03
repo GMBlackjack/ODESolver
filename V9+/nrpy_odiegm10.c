@@ -2,10 +2,6 @@
 #include "nrpy_odiegm_specific_methods.c"
 //TODO:
 //CLEAN
-//Valgrind
-//Validation
-//Backward Evolving?
- 
 //Jupyter notebook Adjusents. 
 
 //Note: math.h requries the "-lm" arg be added at the END of tasks.json's arguments.
@@ -41,8 +37,8 @@ int main()
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 100000; //How many steps we are going to take? This is the default termination condition. 
-    int adamsBashforthOrder = 4; //if using the AB method, specify which order you want.
+    const int SIZE = 200000; //How many steps we are going to take? This is the default termination condition. 
+    int adamsBashforthOrder = 5; //if using the AB method, specify which order you want.
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
     bool noAdaptiveTimestep = false; //Sometimes we just want to step forward uniformly 
     //without using GSL's awkward setup.
@@ -59,8 +55,8 @@ int main()
     //to be read differently. 
 
     //ERROR PARAMETERS: Use these to set limits on the erorr. 
-    double absoluteErrorLimit = 1e-10; //how big do we let the absolute error be?
-    double relativeErrorLimit = 1e-10; //how big do we let the relative error be?
+    double absoluteErrorLimit = 1e-14; //how big do we let the absolute error be?
+    double relativeErrorLimit = 1e-14; //how big do we let the relative error be?
     //Note: there are a lot more error control numbers that can be set inside the control "object" d->c.
 
     //We need to define a struct that can hold all possible constants. 
@@ -77,11 +73,11 @@ int main()
 
     //Now we set up the method. 
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_RK4;
+    stepType = nrpy_odiegm_step_AB;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_RK4;
+    stepType2 = nrpy_odiegm_step_AB;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
@@ -114,10 +110,20 @@ int main()
     //based on what type of method we are using, we adjust some parameters within the driver.
 
     if (validate == true) {
-        printf("Method Order: %i. \nOrder of Error should be near to or larger than Method Order + 1.\n",stepType->order);
-        printf("If not, try a larger step size, roundoff error may be interfering.\n");
+        if (methodType == 2) {
+            printf("Method Order: %i. \nOrder of Error should be near to or larger than Method Order + 1.\n",adamsBashforthOrder);
+            printf("If not, try a larger step size, roundoff error may be interfering.\n");
+        } else {
+            printf("Method Order: %i. \nOrder of Error should be near to or larger than Method Order + 1.\n",stepType->order);
+            printf("If not, try a larger step size, roundoff error may be interfering.\n");
+        }
     } else {
-        printf("Method Order: %i.\n",stepType->order);
+        if (methodType == 2) {
+            printf("Method Order: %i.\n",adamsBashforthOrder);
+        } else {
+            printf("Method Order: %i.\n",stepType->order);            
+        }
+
     }
     //If validation is not needed, we don't care about the Order of the Error. 
     
@@ -204,6 +210,8 @@ int main()
     //This loop fills out all the data.
     //It takes a provided butcher table and executes the method stored within. Any table should work.  
 
+    d->e->validate = validate;
+
     for (int i = 0; i < SIZE; i++){
         
         //Hybrid Methods require some fancy footwork, hence the if statements below. 
@@ -226,6 +234,11 @@ int main()
         nrpy_odiegm_evolve_apply(d->e, d->c, d->s, &system, &currentPosition, currentPosition+step, &step, y);
         //holder = nrpy_odiegm_evolve_apply_fixed_step(d->e, d->c, d->s, &system, &currentPosition, step, y);
 
+            exceptionHandler(currentPosition,y);
+            constEval(currentPosition,y,&cp);
+            assignConstants(c,&cp);
+            //These lines are to make sure the constant updates. 
+            //And exception constraints are applied.  
 
             //Uncomment for live updates.
             //printf("Position:,\t%15.14e,\t",currentPosition);
@@ -234,13 +247,6 @@ int main()
                 //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
                 fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, y[n]);
             }
-
-            //constEval(currentPosition, y, &cp);
-            //Turns out this above line is completely unecessary. Left as comment just in case.
-            exceptionHandler(currentPosition,y);
-            constEval(currentPosition,y,&cp);
-            assignConstants(c,&cp);
-            //These lines are to make sure the constant updates.   
 
             for (int n = 0; n < numberOfConstants; n++) {
                 //printf("Constant %i:,\t%15.14e,\t",n, c[n]);

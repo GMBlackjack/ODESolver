@@ -623,6 +623,77 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     currentPosition = bound+step*(i+1);
                     //Check for exceptions and evaluate constants at our new values.
                     
+                    //AB Validation
+                    if (validate == true && i == adamsBashforthOrder) {
+                        //validation is gonna be tricky for AB methods, as it requries exact values for everything.
+                        //Thus, let's create an array of exact values. 
+                        double yValidateValues[adamsBashforthOrder][numberOfEquations];
+                        //We will use this twice, once to do a sigle step, once to do a half step.
+                        //note the indeces are reversed from the usual yValues matrix. 
+                        
+                        for (int m = 0; m <adamsBashforthOrder; m++) {
+                            dydt->trueFunction(bound+step*(adamsBashforthOrder-m),yValidateValues[m]);
+                        }
+                        //This fills the entire yValidateValues array with exact values. 
+
+                        double yValidateBigStep[numberOfEquations];
+                        double yValidateBigStepResult[numberOfEquations];
+                        //We declare two variables for validation in regards to the larger step. 
+
+                        for (int n = 0; n< numberOfEquations; n++) {
+                            yValidateBigStepResult[n] = yValidateValues[0][n];
+                        }  
+                        //Take the actual true values for the present here. 
+
+                        for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
+                            dydt->function(bound+step*(adamsBashforthOrder-m), yValidateValues[m], yValidateBigStep, dydt->params);
+                            //Evaluate the differential equations, store the result in yValidateBigStep
+                            for (int n = 0; n< numberOfEquations; n++) {
+                                yValidateBigStepResult[n] = yValidateBigStepResult[n] + step*butcher[currentRow][m+currentRow]*yValidateBigStep[n];
+                                //Perform the actual AB method. 
+                            }  
+                        }
+
+                        for (int m = 0; m <adamsBashforthOrder; m++) {
+                            dydt->trueFunction(bound+step*adamsBashforthOrder-step*0.5*m,yValidateValues[m]);
+                        }
+                        //Now set the exact values for half steps. The entire array is different
+                        //since reaching back in time by half steps alters positions of basically everything
+                        //except the present. 
+
+                        double yValidateSmolStep[numberOfEquations];
+                        double yValidateSmolStepResult[numberOfEquations];
+                        //Small values.
+
+                        for (int n = 0; n< numberOfEquations; n++) {
+                            yValidateSmolStepResult[n] = yValidateValues[0][n];
+                        }  
+                        //Insert the true values for the present. 
+
+                        //The below loop is the same as the previous one, except it makes sure to take half steps carefully.
+                        for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
+                            dydt->function(bound+step*(adamsBashforthOrder)-step*0.5*m, yValidateValues[m], yValidateSmolStep, dydt->params);
+                            for (int n = 0; n< numberOfEquations; n++) {
+                                yValidateSmolStepResult[n] = yValidateSmolStepResult[n] + step*0.5*butcher[currentRow][m+currentRow]*yValidateSmolStep[n];
+                            }   
+                        }
+                            
+                        for (int n = 0; n< numberOfEquations; n++) {
+                            knownQEval(bound+step*adamsBashforthOrder+step,yValidateBigStep);
+                            knownQEval(bound+step*adamsBashforthOrder+step*0.5,yValidateSmolStep);
+                        } 
+                        //Now that we have already used the "...Step" variables for calculation, they can now hold the truth values.       
+                        //Reduce, reuse, recycle after all!
+
+                        for (int n = 0; n < numberOfEquations; n++) {
+                            yValidateBigStep[n] = (yValidateBigStep[n] - yValidateBigStepResult[n]);
+                            yValidateSmolStep[n] = (yValidateSmolStep[n] - yValidateSmolStepResult[n]);
+                            //Now the validation steps contain their own errors, we can compare them.
+                            printf("Order of Error: %i\t%f\n",n, log2(yValidateBigStep[n]/yValidateSmolStep[n]));
+                            printf("And the other stuff...: %li %f %f\n",i, yValidateBigStep[n],yValidateSmolStep[n]);
+                            //print out the estimated error.
+                    }
+                }
                      
                 }
     //Now we adjust any values that changed so everything outside the function can know it. 

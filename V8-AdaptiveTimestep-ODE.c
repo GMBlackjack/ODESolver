@@ -144,8 +144,8 @@ int main()
     //enable to have the actual errors reported. Produces junk data if there is no declared known function. 
 
     //ERROR PARAMETERS: Use these to set limits on the erorr. 
-    double absoluteErrorLimit = 1e-15; //how big do we let the absolute error be?
-    double relativeErrorLimit = 1e-15; //how big do we let the relative error be?
+    double absoluteErrorLimit = 1e-14; //how big do we let the absolute error be?
+    double relativeErrorLimit = 1e-14; //how big do we let the relative error be?
     double ayErrorScaler = 1.0; //For giving extra weight to the functions themselves.
     double adyErrorScaler = 1.0;  //For giving extra weight to the derivatives. 
     //Note: the function for determining error creates a combined tester, it doesn't do either/or absolute or relative.

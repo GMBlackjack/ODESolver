@@ -9,15 +9,6 @@ struct constantParameters {
     //add more as necessary.  
 };
 
-/* void updateConstantParameters (struct constantParameters *adjust, struct constantParameters *model) {
-    //Sadly the way we've implemented this, the updating of
-    //constantParameters cannot be done automatically, it must be manual here.
-    //Set everything to match what is declared in the struct constantParameters
-    (*(struct constantParameters*)adjust).dimension = (*(struct constantParameters*)model).dimension;
-    (*(struct constantParameters*)adjust).rho = (*(struct constantParameters*)model).rho;
-} */
-//Somehow this function ended up being completely unecessary. 
-
 void exceptionHandler (double x, double y[])
 {
     //This funciton might be empty. It's only used if the user wants to hard code some limitations 
