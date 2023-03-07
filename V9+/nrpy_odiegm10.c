@@ -24,6 +24,7 @@
 int main()
 {
     printf("Beginning ODE Solver \"Odie\" V10...\n");
+    //printf("%10.9e\n", M_PI);
 
     //SECTION I: Preliminaries
     //Before the program actually starts, variables need to be created
@@ -33,14 +34,14 @@ int main()
 
     double step = 0.00001; //the "step" value. Initial step if using an adaptive method.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
-    int numberOfEquations = 4; //How many equations are in our system?
+    int numberOfEquations = 2; //How many equations are in our system?
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
-    const int SIZE = 200000; //How many steps we are going to take? This is the default termination condition. 
+    const int SIZE = 1000000; //How many steps we are going to take? This is the default termination condition. 
     int adamsBashforthOrder = 5; //if using the AB method, specify which order you want.
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
-    bool noAdaptiveTimestep = false; //Sometimes we just want to step forward uniformly 
+    bool noAdaptiveTimestep = true; //Sometimes we just want to step forward uniformly 
     //without using GSL's awkward setup.
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Currently NOT working at ALL..
@@ -73,11 +74,11 @@ int main()
 
     //Now we set up the method. 
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_AB;
+    stepType = nrpy_odiegm_step_DP8;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_AB;
+    stepType2 = nrpy_odiegm_step_DP8;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
@@ -251,6 +252,7 @@ int main()
             for (int n = 0; n < numberOfConstants; n++) {
                 //printf("Constant %i:,\t%15.14e,\t",n, c[n]);
                 fprintf(fp2, "Constant %i:,\t%15.14e,\t",n, c[n]);
+                //printf("Constant %i:,\t%15.14e %15.14e,\n",n, c[n], y[n]);
             }
             //printf("\n");
             fprintf(fp2,"\n");
