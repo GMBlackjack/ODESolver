@@ -44,7 +44,7 @@ void constEval (double x, const double y[], struct constantParameters *params)
     //params->rho = sqrt(y[0]) + y[0]; //Standard NRPy+ TOV EOS
 
     //Full Isotropic EOS
-    double gamma = 2.0;
+    double gamma = 5.0/3.0;
     double K = 1.0;
     params->rho = pow(y[0]/K,1.0/gamma) + (y[0])/(gamma-1);
     //Setting options for (gamma,K)
@@ -155,7 +155,8 @@ int knownQEval (double x, double y[]) //This function is the other one passed us
 void getInitialCondition (double y[])
 {
     //be sure to have these MATCH the equations in diffyQEval
-    y[0] = 0.016714611225000002; //Pressure, can be calcualated from central baryon density. 
+    //y[0] = 0.016714611225000002; //Pressure, can be calcualated from central baryon density. 
+    y[0] = 0.02479735285425; //setting by the density instead for NonRelativistic.
     y[1] = 0.0; //mass
 }
 

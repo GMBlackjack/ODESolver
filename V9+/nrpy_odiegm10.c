@@ -35,7 +35,7 @@ int main()
     double step = 0.00001; //the "step" value. Initial step if using an adaptive method.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 2; //How many equations are in our system?
-    int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
+    int numberOfConstants = 2; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
     const int SIZE = 1000000; //How many steps we are going to take? This is the default termination condition. 
@@ -151,7 +151,7 @@ int main()
     constEval(currentPosition, y, &cp);
 
     FILE *fp2;
-    fp2 = fopen("ooData.txt","w");
+    fp2 = fopen("oDataNonRel2.txt","w");
 
     //Open the file we'll be writing data to. 
     //First though, let's print out our initial data. The print function needs to be adaptable to any size of data. 

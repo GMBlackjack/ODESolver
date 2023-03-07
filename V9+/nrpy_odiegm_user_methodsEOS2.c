@@ -69,12 +69,12 @@ int diffyQEval (double x, double y[], double dydx[], void *params)
     }
     else {
         //large t domain
-        //dydx[0] = -(4.0)/(x*(x-2.0*y[1])) * (((x*x*x)/(6.0))*exp(y[0]) + y[1]);
-        //dydx[1] = 0.5*x*x*exp(y[0]);
+        dydx[0] = -(4.0)/(x*(x-2.0*y[1])) * (((x*x*x)/(6.0))*exp(y[0]) + y[1]);
+        dydx[1] = 0.5*x*x*exp(y[0]);
 
         //general domain
-        dydx[0] = -(4.0)/(x*(x-2.0*y[1])) * (sinh(y[0]) - 2.0*sinh(y[0]/2.0))/(cosh(y[0]) - 4.0 * cosh(y[0]/2.0) + 3.0) * (((x*x*x)/(3.0))*(sinh(y[0]) + 8.0*sinh(y[0]/2.0) + 3.0*y[0]) + y[1]);
-        dydx[1] = x*x*(sin(y[0]) - y[0]);     
+        //dydx[0] = -(4.0)/(x*(x-2.0*y[1])) * (sinh(y[0]) - 2.0*sinh(y[0]/2.0))/(cosh(y[0]) - 4.0 * cosh(y[0]/2.0) + 3.0) * (((x*x*x)/(3.0))*(sinh(y[0]) + 8.0*sinh(y[0]/2.0) + 3.0*y[0]) + y[1]);
+        //dydx[1] = x*x*(sinh(y[0]) - y[0]);     
     }
     //This funciton is not guaranteed to work in all cases. For instance, we have manually 
     //made an exception for xdouble butcher[3][3] = {{0.0,0,0},{1.0,1.0,0},{2.0,0.5,0.5}};=0, since evaluating at 0 produces infinities and NaNs. 
@@ -104,7 +104,8 @@ void getInitialCondition (double y[])
 {
     //be sure to have these MATCH the equations in diffyQEval
     //y[0] = 0.016714611225000002; //Pressure, can be calcualated from central baryon density. 
-    y[0] = 0.2429308333*8;
+    //y[0] = 2.429308333; //For Pressure setting.
+    y[0] = 2.071771750462; //For density setting. 
     y[1] = 0.0; //mass
 }
 
