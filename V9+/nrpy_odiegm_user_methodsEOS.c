@@ -3,6 +3,9 @@
 #include <math.h>
 #include <stdbool.h>
 
+const double G = 6.67e-8;
+const double C = 2.997e10;
+
 struct constantParameters { 
     int dimension; //number that says how many we have. 
     double rho;
@@ -44,9 +47,9 @@ void constEval (double x, const double y[], struct constantParameters *params)
     //params->rho = sqrt(y[0]) + y[0]; //Standard NRPy+ TOV EOS
 
     //Full Isotropic EOS
-    double gamma = 5.0/3.0;
-    double K = 1.0;
-    params->rho = pow(y[0]/K,1.0/gamma) + (y[0])/(gamma-1);
+    double gamma = 2.0;
+    double K = 1.455278723744975e+03;
+    params->rho = pow(y[0]/K,1.0/gamma) ;//+ (y[0])/(gamma-1);
     //Setting options for (gamma,K)
     //NRPy+ TOV: 2, 1
     //Scaled Nonrelativistic: 5/3, 1
@@ -69,13 +72,7 @@ void constEval (double x, const double y[], struct constantParameters *params)
 
     //Tolman's other EOS, one that we have to seek the right answer for. 
     /*double A = sqrt(7.0/(56.0*M_PI));
-    bool foundIt = false; 
-    double lowerBound = 0; //this is the smallest density can be
-    double upperBound = 3.0*y[0]; //the density should always be less than the pressure in these situations. 
-    while (foundIt == false) {
-        double buffer = (1.0/3.0)*params->rho*(1.0 - 9.0 * A * (1.0)/(sqrt(params->rho)))/(1.0 - A * (1.0)/(sqrt(params->rho)));
-        if (y[0] - buffer > 1e-14) {
-            lowerBound = params->rho;
+    bool foundIt = false; cgs
         } else if (y[0] - buffer < -1e-14) {
             upperBound = params->rho;
         } else {
@@ -125,7 +122,10 @@ int diffyQEval (double x, double y[], double dydx[], void *params)
         dydx[1] = 0;
     }
     else {
-        dydx[0] = -((rho+y[0])*( (2.0*y[1])/(x) + 8.0*M_PI*x*x*y[0] ))/(x*2.0*(1.0 - (2.0*y[1])/(x)));
+        //For c=G=1
+        //dydx[0] = -((rho+y[0])*( (2.0*y[1])/(x) + 8.0*M_PI*x*x*y[0] ))/(x*2.0*(1.0 - (2.0*y[1])/(x)));
+        //for cgs, not working
+        dydx[0] = -G*((rho+y[0]*(1.0/(C*C)))*( (2.0*y[1])/(x) + 8.0*M_PI*x*x*y[0]*(1.0/(C*C)) ))/(x*2.0*(1.0 - (2.0*y[1]*G*(1.0/(C*C)))/(x)));
         dydx[1] = 4*M_PI*x*x*rho;
     }
     //This funciton is not guaranteed to work in all cases. For instance, we have manually 
@@ -156,7 +156,9 @@ void getInitialCondition (double y[])
 {
     //be sure to have these MATCH the equations in diffyQEval
     //y[0] = 0.016714611225000002; //Pressure, can be calcualated from central baryon density. 
-    y[0] = 0.02479735285425; //setting by the density instead for NonRelativistic.
+    //y[0] = 0.02479735285425; //setting by the density instead for NonRelativistic.
+    //y[0] = 4.585321933e-7;
+    y[0] = 5.550557828726982e+38;
     y[1] = 0.0; //mass
 }
 
