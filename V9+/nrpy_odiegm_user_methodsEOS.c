@@ -49,7 +49,7 @@ void constEval (double x, const double y[], struct constantParameters *params)
     //Full Isotropic EOS
     double gamma = 2.0;
     double K = 1.455278723744975e+03;
-    params->rho = pow(y[0]/K,1.0/gamma) ;//+ (y[0])/(gamma-1);
+    params->rho = pow(y[0]/K,1.0/gamma); //+ (y[0])/(gamma-1);
     //Setting options for (gamma,K)
     //NRPy+ TOV: 2, 1
     //Scaled Nonrelativistic: 5/3, 1

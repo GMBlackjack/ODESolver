@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include "butcher.c"
-#include "nrpy_odiegm_user_methodsEOS.c"
+#include "nrpy_odiegm_user_methods.c"
 
 //The actual stepping functions. 
 int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,

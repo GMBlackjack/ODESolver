@@ -32,16 +32,16 @@ int main()
     //The system of differential equations can be found declared in diffyQEval()
     //in nrpy_odiegm_specific_methods.c
 
-    double step = 1; //the "step" value. Initial step if using an adaptive method.
+    double step = 0.00001; //the "step" value. Initial step if using an adaptive method.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
-    int numberOfEquations = 2; //How many equations are in our system?
+    int numberOfEquations = 4; //How many equations are in our system?
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
     const int SIZE = 100000; //How many steps we are going to take? This is the default termination condition. 
     int adamsBashforthOrder = 5; //if using the AB method, specify which order you want.
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
-    bool noAdaptiveTimestep = true; //Sometimes we just want to step forward uniformly 
+    bool noAdaptiveTimestep = false; //Sometimes we just want to step forward uniformly 
     //without using GSL's awkward setup.
     bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
     //Currently NOT working at ALL..
@@ -74,11 +74,11 @@ int main()
 
     //Now we set up the method. 
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_DP8;
+    stepType = nrpy_odiegm_step_RK4;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_DP8;
+    stepType2 = nrpy_odiegm_step_RK4;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
@@ -232,12 +232,16 @@ int main()
             d->e->noAdaptiveTimestep = true;
         }
 
+        printf("%i %d %i %i %i\n", d->s->adamsBashforthOrder, d->e->noAdaptiveTimestep, d->s->rows, d->s->columns, d->s->methodType);
+        //Some things not initialized when not using AB method? Interesting.
+
         nrpy_odiegm_evolve_apply(d->e, d->c, d->s, &system, &currentPosition, currentPosition+step, &step, y);
         //holder = nrpy_odiegm_evolve_apply_fixed_step(d->e, d->c, d->s, &system, &currentPosition, step, y);
 
             exceptionHandler(currentPosition,y);
             constEval(currentPosition,y,&cp);
             assignConstants(c,&cp);
+
             //These lines are to make sure the constant updates. 
             //And exception constraints are applied.  
 
@@ -279,6 +283,9 @@ int main()
 
                 assignConstants(c,&cp); 
                 assignConstants(cTruth,&cpTruth);
+
+                //printf("%15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e\n", yTruth[0], yTruth[1], yTruth[2], yTruth[3], cpTruth.rho, cTruth[0], currentPosition);
+
                  
                 fprintf(fp2, "Errors:,\t");
                 for (int n = 0; n < numberOfEquations; n++) {
