@@ -39,7 +39,8 @@ int main()
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
     //in the functions above main()
     const int SIZE = 100000; //How many steps we are going to take? This is the default termination condition. 
-    int adamsBashforthOrder = 5; //if using the AB method, specify which order you want.
+    int adamsBashforthOrder = 4; //if using the AB method, specify which order you want.
+    //REMEMBER TO CHANGE BOTH ORDERS!
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
     bool noAdaptiveTimestep = false; //Sometimes we just want to step forward uniformly 
     //without using GSL's awkward setup.
@@ -232,7 +233,7 @@ int main()
             d->e->noAdaptiveTimestep = true;
         }
 
-        printf("%i %d %i %i %i\n", d->s->adamsBashforthOrder, d->e->noAdaptiveTimestep, d->s->rows, d->s->columns, d->s->methodType);
+        //printf("%i %d %i %i %i\n", d->s->adamsBashforthOrder, d->e->noAdaptiveTimestep, d->s->rows, d->s->columns, d->s->methodType);
         //Some things not initialized when not using AB method? Interesting.
 
         nrpy_odiegm_evolve_apply(d->e, d->c, d->s, &system, &currentPosition, currentPosition+step, &step, y);

@@ -26,6 +26,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     e->last_step = 1.0; //this is generally not used but the user might want it or something. 
                 }
 
+
                 //Gotta read in a few things...
 
                 int numberOfEquations = (int)(dydt->dimension);
@@ -60,8 +61,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 double yValues[numberOfEquations][adamsBashforthOrder];
 
                 int counter = 0;
-
-                
 
                 if (i == 0 && adamsBashforthOrder != 0) {
                     //first time initialization.
@@ -276,7 +275,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                 for (int n = 0; n<numberOfEquations; n++) {
                                     yBigStep[n] = ySmolSteps[n];
                                     ySmolSteps[n] = y[n];
-
                                     //we still need to reset the value for SmolSteps on the first iteration
                                     //no matter the type of method. 
                                 }
@@ -458,7 +456,6 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                                 //takes prescedent. We would rather have more accuracy than less in odd situations like that. 
 
                                 //These if statements perform step adjustment if needed. Based on GSL's algorithm. 
-                            
                                 else if (overError == true) {
                                     step = step * scaleFactor * pow(ratioED,-1.0/butcher[rows-1-methodType*quickPatch][0]);
                                 } else { //if underError is true and overError is false is the only way to get here. The true-true situation is skipped.
@@ -593,10 +590,10 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         dydt->function(xInsert, yInsert, dyOut, dydt->params);
 
 
-
                         //With that evaluation, we can change the value of y for each equation. 
                         for (int n = 0; n< numberOfEquations; n++) {
                             y[n] = y[n] + step*butcher[currentRow][m+currentRow]*dyOut[n];
+
                         }
                         //Keep in mind this is procedural, y isn't right until all values of m have been cycled through. 
                     }

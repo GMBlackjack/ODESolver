@@ -3,9 +3,9 @@
 #include <math.h>
 #include <stdbool.h>
 
-double zeroArray[19][19] = {{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}};
-//The existence of this array is evidence of us throwing up our hands and plugging the tiny hole with an entire island. 
-//No more memory leaks or overwrites, though! It solves the problem! 
+//This file is where all the primary "objects" are stored.
+//The "objects" are defined as structs largely in accordance with GSL's definitions. 
+//However, unecessary variables were removed, and a handful were repurposed. 
 
 typedef struct {
     int (*function) (double x, double y[], double dydx[], void *params);
@@ -100,6 +100,10 @@ nrpy_odiegm_step_alloc (const nrpy_odiegm_step_type * T, size_t dim)
   s->type = T;
   s->methodType = 1;
   s->adamsBashforthOrder = 0;
+  s->rows = T->rows;
+  s->columns = T->columns;
+  //these two assignments might be unecessary, but it will be convenient if this number
+  //can be acessed at both levels. 
   if (T->rows == T->columns) {
     s->methodType = 0; //aka, normal RK-type method. 
   }
@@ -114,7 +118,8 @@ nrpy_odiegm_step_alloc (const nrpy_odiegm_step_type * T, size_t dim)
       emptyArray[n][m] = 0;
     }
   }
-  s->yValues = &zeroArray;
+  //s->yValues = &zeroArray;
+  s->yValues = (double *) malloc ((double)s->adamsBashforthOrder*(double)s->adamsBashforthOrder * sizeof (double));
 
   return s;
 }
@@ -125,7 +130,12 @@ nrpy_odiegm_evolve_alloc (size_t dim)
   nrpy_odiegm_evolve *e = (nrpy_odiegm_evolve *) malloc (sizeof (nrpy_odiegm_evolve));
   e->y0 = (double *) malloc (dim * sizeof (double));
   e->yerr = (double *) malloc (dim * sizeof (double));
-  //e->dimension = dim; //this value turns out to be completely unecessary as the system stores the dimension. 
+  //fill these with 0 just in case someone tries to allocate something. 
+  for (int n = 0; n < dim; n++) {
+    e->y0[n] = 0.0;
+    e->yerr[n] = 0.0;
+  }
+  
   e->count = 0;
 
   e->last_step = 0.0; 
@@ -177,6 +187,8 @@ nrpy_odiegm_driver * nrpy_odiegm_driver_alloc_y_new (const nrpy_odiegm_system * 
     state->h = hstart;
 
     state->c = nrpy_odiegm_control_y_new (epsabs, epsrel);
+
+    //printf("%15.14e \n", state->e->yerr[0]);
     //Otherwise we're not using a method that needs step size control. 
   //There were functions here that assigned the driver to the objects contained in the driver.
   //We will not be doing that nonsense. 
@@ -200,6 +212,7 @@ void nrpy_odiegm_evolve_free (nrpy_odiegm_evolve * e)
 }
 void nrpy_odiegm_step_free (nrpy_odiegm_step * s)
 { 
+  free (s->yValues);
   free (s);
 }
 void nrpy_odiegm_driver_free (nrpy_odiegm_driver * state)
