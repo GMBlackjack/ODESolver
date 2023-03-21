@@ -1,5 +1,5 @@
-//#include "nrpy_odiegm.h"
-#include "nrpy_odiegm_specific_methods.c"
+#include "nrpy_odiegm.h"
+#include "nrpy_odiegm_user_methods.c"
 //TODO:
 //CLEAN
 //Jupyter notebook Adjusents. 
@@ -16,10 +16,8 @@
 //Heavily influenced by Numerical Mathematics and Computing 6E by Cheney and Kincaid.
 //and GSL's ODE Solver, especially the method for adaptive time step and high-level funcitonality. 
 
-//Outside the program, we substantiate the differential equation itself as well as its various limitations.
-
 //https://git.ligo.org/lscsoft/lalsuite/-/blob/master/lalsimulation/lib/LALSimIMRTEOBResumS.c
-//Lalsuite guided for what exactly we want to replace. 
+//Lalsuite section for what parts of GSL this was designed to replace. 
 
 int main()
 {
@@ -36,25 +34,23 @@ int main()
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 4; //How many equations are in our system?
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
-    //If altering the two "numberOf" ints, be careful it doesn't go over the actual number and cause an overflow 
-    //in the functions above main()
-    const int SIZE = 100000; //How many steps we are going to take? This is the default termination condition. 
+    //If altering the two "numberOf" ints, be careful it doesn't go over the actual number 
+    //and cause an overflow in the functions in user_methods
+    const int SIZE = 100000; //How many steps we are going to take? 
+    //This is the default termination condition. 
     int adamsBashforthOrder = 4; //if using the AB method, specify which order you want.
-    //REMEMBER TO CHANGE BOTH ORDERS!
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
     bool noAdaptiveTimestep = false; //Sometimes we just want to step forward uniformly 
-    //without using GSL's awkward setup.
-    bool validate = false; //Set to true if you wish to run a validation test. Only works if solution is already known.
-    //Currently NOT working at ALL..
-    //Spits out nonsense if no solution is provided.
+    //without using GSL's awkward setup. False by default. 
+    bool validate = false; //Set to true if you wish to run a validation test. 
+    //Only works if solution is already known.
+    //Spits out nonsense if no true solution is provided.
 
-    //ERROR PRINTING CONTROL GOES HERE WHEN READY
     bool reportErrorActual = false;
     bool reportErrorEstimates = false;
-    //Error Estimates and Error Actual
     //AB methods do not report error estimates. 
-    //BE WARNED: setting reporError (either kind) to true makes it print out all error data on another line, the file will have
-    //to be read differently. 
+    //BE WARNED: setting reporError (either kind) to true makes it print out all error data on another line,
+    //the file will have to be read differently. 
 
     //ERROR PARAMETERS: Use these to set limits on the erorr. 
     double absoluteErrorLimit = 1e-14; //how big do we let the absolute error be?
@@ -63,15 +59,15 @@ int main()
 
     //We need to define a struct that can hold all possible constants. 
     struct constantParameters cp; 
-
     cp.dimension = numberOfConstants;
     //we'll set the actual parameters later. 
-    //Do note that cp itself needs to be declared in constantParameters manually.
+    //Do note that cp itself needs to be declared in constantParameters in user_methods manually.
     //The methods that work with it need to be declared as well. 
 
     nrpy_odiegm_system system = {diffyQEval,knownQEval,numberOfEquations,&cp};
     //This is the system of equations we solve.
-    //The second slot was originally the Jacobian, but we use it to pass a validation equation that may or may not be used.
+    //The second slot was originally the Jacobian in GSL, but we use it to pass a 
+    //validation equation that may or may not be used.
 
     //Now we set up the method. 
     const nrpy_odiegm_step_type * stepType;
@@ -85,7 +81,7 @@ int main()
     //Set to AB to use pure AB method. 
 
     nrpy_odiegm_driver *d;
-    d = nrpy_odiegm_driver_alloc_y_new(&system, stepType,step, absoluteErrorLimit, relativeErrorLimit); 
+    d = nrpy_odiegm_driver_alloc_y_new(&system, stepType, step, absoluteErrorLimit, relativeErrorLimit); 
     //This is the "object" that runs everything, contains every needed varaible, etc. 
     //Basically the master of the whole thing, hence why it's called the "driver"
     //Contains three major sub-objects besides the step type. 
@@ -100,7 +96,7 @@ int main()
     //This integer is actually very useful as it can help us keep track of index changes between
     //the two types of methods! (We said, before we added another methodType that ruined that).
 
-    //Technically the above sets the type. What we do now is basically undo that pointer nonsense. 
+    //Technically the above sets the type. What we do next is basically undo the pointer nonsense. 
     //Since we know the dimension, we can now fill an actual butcher array. 
     if (stepType->rows == 19) { 
         methodType = 2;
@@ -109,6 +105,7 @@ int main()
     }
     d->s->adamsBashforthOrder = adamsBashforthOrder;
     d->e->noAdaptiveTimestep = noAdaptiveTimestep;
+    d->e->bound = bound;
     //based on what type of method we are using, we adjust some parameters within the driver.
 
     if (validate == true) {
@@ -132,7 +129,7 @@ int main()
     double y[numberOfEquations];
     //These variables temporarily store the values calculated before they are 
     //printed to the output file and forgotten.
-    //y is the values of the actual equations. 
+    //y contains the values of the actual equations and their derivatives. 
     //Each array only holds values at one evaluation point, but one for each Equation.
 
     double c[numberOfConstants];
@@ -147,16 +144,16 @@ int main()
 
     //This here sets the initial conditions as declared in getInitialCondition()
     getInitialCondition(y); 
-
-    //This evaluates any constants that might be needed for evaluating the actual differnetial equations. 
-    constEval(currentPosition, y, &cp);
+    constEval(bound, y,&cp);
 
     FILE *fp2;
     fp2 = fopen("ooData.txt","w");
 
     //Open the file we'll be writing data to. 
-    //First though, let's print out our initial data. The print function needs to be adaptable to any size of data. 
-    //We can do this with multiple print functions and just not adding the newline character until we're done.
+    //Before continuing, let's print out our initial data. 
+    //The print function needs to be adaptable to any size of data. 
+    //We can do this with multiple print functions and just 
+    //not adding the newline character until we're done.
     //We print both to console and to the file for the initial conditions, but later only print to file.
     //First, print the location we are at. 
     printf("INITIAL: Position:,\t%f,\t",bound);
@@ -233,99 +230,70 @@ int main()
             d->e->noAdaptiveTimestep = true;
         }
 
-        //printf("%i %d %i %i %i\n", d->s->adamsBashforthOrder, d->e->noAdaptiveTimestep, d->s->rows, d->s->columns, d->s->methodType);
-        //Some things not initialized when not using AB method? Interesting.
-
         nrpy_odiegm_evolve_apply(d->e, d->c, d->s, &system, &currentPosition, currentPosition+step, &step, y);
-        //holder = nrpy_odiegm_evolve_apply_fixed_step(d->e, d->c, d->s, &system, &currentPosition, step, y);
+        
+        exceptionHandler(currentPosition,y);
+        constEval(currentPosition,y,&cp);
+        assignConstants(c,&cp);
+        //These lines are to make sure the constant updates. 
+        //And exception constraints are applied.  
 
-            exceptionHandler(currentPosition,y);
-            constEval(currentPosition,y,&cp);
-            assignConstants(c,&cp);
+        //Uncomment for live updates.
+        //printf("Position:,\t%15.14e,\t",currentPosition);
+        fprintf(fp2, "Position:,\t%15.14e,\t",currentPosition);
+        for (int n = 0; n < numberOfEquations; n++) {
+            //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
+            fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, y[n]);
+        }
 
-            //These lines are to make sure the constant updates. 
-            //And exception constraints are applied.  
+        for (int n = 0; n < numberOfConstants; n++) {
+            //printf("Constant %i:,\t%15.14e,\t",n, c[n]);
+            fprintf(fp2, "Constant %i:,\t%15.14e,\t",n, c[n]);
+            //printf("Constant %i:,\t%15.14e %15.14e,\n",n, c[n], y[n]);
+        }
+        //printf("\n");
+        fprintf(fp2,"\n");
 
-            //Uncomment for live updates.
-            //printf("Position:,\t%15.14e,\t",currentPosition);
-            fprintf(fp2, "Position:,\t%15.14e,\t",currentPosition);
+        if (reportErrorEstimates == true) {
+            //Print the error estimates we already have. 
+            fprintf(fp2, "Error Estimates:,\t");
             for (int n = 0; n < numberOfEquations; n++) {
-                //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
-                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, y[n]);
+                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,*(d->e->yerr+n)); //find a way to grab the error. 
             }
+            //constant estimates not reported, only diffyQ values. 
+            fprintf(fp2,"\n");
+        }
+            
+        if (reportErrorActual == true) {
+            //Now if we have an actual error to compare against with, there's some more work to do. 
+            double yTruth[numberOfEquations];
+            double cTruth[numberOfConstants];
+            struct constantParameters cpTruth; 
+            //True values for everything we compare with.
+            
+            knownQEval(currentPosition,yTruth);
+            constEval(currentPosition,yTruth,&cpTruth);
 
-            for (int n = 0; n < numberOfConstants; n++) {
-                //printf("Constant %i:,\t%15.14e,\t",n, c[n]);
-                fprintf(fp2, "Constant %i:,\t%15.14e,\t",n, c[n]);
-                //printf("Constant %i:,\t%15.14e %15.14e,\n",n, c[n], y[n]);
+            assignConstants(c,&cp); 
+            assignConstants(cTruth,&cpTruth);
+ 
+            fprintf(fp2, "Errors:,\t");
+            for (int n = 0; n < numberOfEquations; n++) {
+                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, yTruth[n]-y[n]);
+                fprintf(fp2, "Truth:,\t%15.14e,\t",yTruth[n]);
             }
+            for (int n = 0; n < numberOfConstants; n++) {
+                fprintf(fp2, "Constant %i Error:,\t%15.14e,\t",n, cTruth[n]-c[n]);
+                fprintf(fp2, "Truth:,\t%15.14e,\t",cTruth[n]);
+            } 
             //printf("\n");
             fprintf(fp2,"\n");
+        }
 
-            if (reportErrorEstimates == true) {
-                //Print the error estimates we already have. 
-                fprintf(fp2, "Error Estimates:,\t");
-                for (int n = 0; n < numberOfEquations; n++) {
-                    fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,*(d->e->yerr+n)); //find a way to grab the error. 
-                }
-                //constant estimates not reported, only diffyQ values. 
-                fprintf(fp2,"\n");
-            }
-                
-            if (reportErrorActual == true) {
-                //Now if we have an actual error to compare against with, there's some more work to do. 
-                double yTruth[numberOfEquations];
-                double cTruth[numberOfConstants];
-                struct constantParameters cpTruth; 
-                //True values for everything we compare with.
-                
-                knownQEval(currentPosition,yTruth);
-                constEval(currentPosition,yTruth,&cpTruth);
-
-                assignConstants(c,&cp); 
-                assignConstants(cTruth,&cpTruth);
-
-                //printf("%15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e\n", yTruth[0], yTruth[1], yTruth[2], yTruth[3], cpTruth.rho, cTruth[0], currentPosition);
-
-                 
-                fprintf(fp2, "Errors:,\t");
-                for (int n = 0; n < numberOfEquations; n++) {
-                    fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, yTruth[n]-y[n]);
-                    fprintf(fp2, "Truth:,\t%15.14e,\t",yTruth[n]);
-                }
-                for (int n = 0; n < numberOfConstants; n++) {
-                    fprintf(fp2, "Constant %i Error:,\t%15.14e,\t",n, cTruth[n]-c[n]);
-                    fprintf(fp2, "Truth:,\t%15.14e,\t",cTruth[n]);
-                } 
-                //printf("\n");
-                fprintf(fp2,"\n");
-            }
-
-            if (doWeTerminate(currentPosition, y, &cp) == 1) {
-                i = SIZE;
-            }
+        if (doWeTerminate(currentPosition, y, &cp) == 1) {
+            i = SIZE;
+        }
     }
-
-    /*holder = nrpy_odiegm_driver_apply_fixed_step(d, &currentPosition, step, 10000, y);
-
-            //Uncomment for live updates.
-            //printf("Position:,\t%15.14e,\t",currentPosition);
-            fprintf(fp2, "Position:,\t%15.14e,\t",currentPosition);
-            for (int n = 0; n < numberOfEquations; n++) {
-                //printf("Equation %i:,\t%15.14e,\t",n, y[n]);
-                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, y[n]);
-            }
-
-            constEval(currentPosition, y, &cp);
-            assignConstants(c,&cp);  
-
-
-            for (int n = 0; n < numberOfConstants; n++) {
-                //printf("Constant %i:,\t%15.14e,\t",n, c[n]);
-                fprintf(fp2, "Constant %i:,\t%15.14e,\t",n, c[n]);
-            }
-            //printf("\n");
-            fprintf(fp2,"\n");*/
 
     //SECTION III: Analysis
     //Minor post-processing goes here. 
