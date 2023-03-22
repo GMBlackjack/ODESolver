@@ -750,7 +750,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         currentPosition = bound+step*(i+1);
         
         //AB Validation
-        if (validate == true && i == adamsBashforthOrder) {
+        if (validate == true && i == adamsBashforthOrder && methodType == 2) {
             //validation is gonna be tricky for AB methods, as it requries exact values for everything.
             //Thus, let's create an array of exact values. 
             double yValidateValues[adamsBashforthOrder][numberOfEquations];
@@ -838,11 +838,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         //Put the new yValues back into the stored array. 
         for (int n = 0; n< numberOfEquations; n++) {
             for (int m = 0; m < adamsBashforthOrder; m++) {
-                if (i == 0 || i ==1) {
-                }
                 *((double *)(*s).yValues+counter) = yValues[n][m]; //Gotta fill in an array... joy...
-                if (i == 0 || i ==1) {
-                }
                 counter++;
             } 
         }

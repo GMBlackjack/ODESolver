@@ -148,6 +148,3 @@ void assignConstants (double c[], struct constantParameters *params)
     c[0] = params->rho; //total energy density. 
     //add more as required. 
 }
-
-//Remember when adjusting these to adjust the necessary parameters in main() as well:
-//step, bound, numberOfEquations, numberOfConstants, SIZE, and validate. 

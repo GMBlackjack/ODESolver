@@ -44,4 +44,3 @@ int nrpy_odiegm_driver_apply_fixed_step (nrpy_odiegm_driver * d, double *t,
                                         const double h,
                                         const unsigned long int n,
                                         double y[]);
-
