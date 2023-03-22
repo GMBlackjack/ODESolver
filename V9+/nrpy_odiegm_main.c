@@ -1,9 +1,9 @@
-#include "nrpy_odiegm_funcs.c"
-#include "nrpy_odiegm_user_methods.c"
+#include "nrpy_odiegm_funcs.c" //nrpy_odiegm itself.
+#include "nrpy_odiegm_user_methods.c" //user-dependent functions. 
 //TODO:
 //Jupyter notebook Adjusents. 
 
-//This file is technically not party of Odie, it is just an example implementation.
+//This file is technically not part of Odie, it is just an example implementation.
 //However, it is exceptionally versatile, and can be used to run virtually 
 //every system of differential equations desired.
 //However, since it's general, it trades off some efficiency to handle
@@ -13,13 +13,12 @@
 int main()
 {
     printf("Beginning ODE Solver \"Odie\" V10...\n");
-    //printf("%10.9e\n", M_PI);
 
     //SECTION I: Preliminaries
     //Before the program actually starts, variables need to be created
     //and set, as well as the functions chosen. 
     //The system of differential equations can be found declared in diffyQEval()
-    //in nrpy_odiegm_specific_methods.c
+    //in nrpy_odiegm_user_methods.c
 
     double step = 0.00001; //the "step" value. Initial step if using an adaptive method.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
@@ -27,7 +26,7 @@ int main()
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number 
     //and cause an overflow in the functions in user_methods
-    const int SIZE = 100000; //How many steps we are going to take? 
+    const int SIZE = 100000; //How many steps are we going to take? 
     //This is the default termination condition. 
     int adamsBashforthOrder = 4; //if using the AB method, specify which order you want.
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
@@ -47,6 +46,8 @@ int main()
     double absoluteErrorLimit = 1e-14; //how big do we let the absolute error be?
     double relativeErrorLimit = 1e-14; //how big do we let the relative error be?
     //Note: there are a lot more error control numbers that can be set inside the control "object" d->c.
+
+    char fileName[] = "ooData.txt"; //Where do you want the data to print?
 
     //Now we set up the method. 
     const nrpy_odiegm_step_type * stepType;
@@ -141,7 +142,8 @@ int main()
     constEval(bound, y,&cp);
 
     FILE *fp2;
-    fp2 = fopen("ooData.txt","w");
+    fp2 = fopen(fileName,"w");
+    printf("Printing to file '%s'.\n",fileName);
 
     //Open the file we'll be writing data to. 
     //Before continuing, let's print out our initial data. 

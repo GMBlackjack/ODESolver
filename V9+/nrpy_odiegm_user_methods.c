@@ -4,6 +4,8 @@
 #include <stdbool.h>
 
 //This file holds all the functions and definitions for the user to edit. 
+//Note that it does not depend on any of the other files--so long as the formatting is maintained
+//the operation of the code should be agnostic to what the user puts in here. 
 
 //This structure here holds any constant parameters we may wish to report.
 //Often this structure can be entirely empty if the equation is self-contained.
@@ -14,6 +16,28 @@ struct constantParameters {
     //double parameter;
     //add more as necessary. Label as desired. 
 };
+
+//Here's the prototypes for the functions in this file, stated explicitly for the sake of clarity. 
+void exceptionHandler (double x, double y[]); 
+//handles any exceptions the user may wish to define.
+int doWeTerminate (double x, double y[], struct constantParameters *params); //user-defined endpoint.
+//Use if the code won't terminate itself from outside, or if there's a special condition. 
+void constEval (double x, const double y[], struct constantParameters *params);
+//Assign constants to the constantParameters struct based on values in y[]. 
+int diffyQEval (double x, double y[], double dydx[], void *params);
+//The definition for the system of equations itself goes here. 
+int knownQEval (double x, double y[]);
+//If an exact solution is known, it goes here, otherwise leave empty. 
+void getInitialCondition (double y[]);
+//Initial conditions for the system of differential equations. 
+void assignConstants (double c[], struct constantParameters *params);
+//Used to read values from constantParameters into an array so they can be reported in sequence. 
+
+//Note that nrpy_odiegm_funcs.c does not depend on these definitions at all. The user is free
+//to rename the functions if desired, though since diffyQEval and knownQEval are passed to 
+//one of nrpy_odiegm's structs the actual function parameters for those two should not be adjusted.
+//NOTE: the given nrpy_odiegm_main.c file will only work with the same names as listed here,
+//only change names if creating a new custom main(). 
 
 void exceptionHandler (double x, double y[])
 {
