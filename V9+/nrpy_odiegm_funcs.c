@@ -136,9 +136,7 @@ void nrpy_odiegm_driver_free (nrpy_odiegm_driver * state)
   free (state);
 }
 
-//SECTION 2: Methods
-
-//The actual stepping functions. 
+//The actual stepping functions follow. 
 
 //The goal is for these functions to be completely agnostic to whatever the user is doing, 
 //they should always work regardless of the form of the system passed, the method passed, and even
@@ -273,6 +271,9 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         double originalStep = step;
         //We need to be able to refer to the original step so we can 
         //see if we're adjusting it too much at once. 
+        double previousStep = step;
+        //if we end up in a situation where the adaptive method wants to oscillate back and forth, 
+        //we will occasionally need to know what the step we found before the current step is. 
 
         //We rather explicitly do not actually take any steps until we confirm the error is below what we want.
         bool errorSatisfactory = false;
@@ -289,6 +290,11 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
             quickPatch = 0;
         }
         //this constant removes certain components from consideraiton. 
+
+        bool floored = false;
+        //this is for a check hard-coded in for if we hit the *absolute minimum* step size. 
+        //we have to make sure to run the loop one more time, so rather than exiting the loop
+        //we set this to true and run once more. 
 
         while (errorSatisfactory == false) {
             
@@ -425,6 +431,15 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 //setting the big step to the right value
                 //and resetting the small steps for when we actually use it. 
                 //This odd structure exists purely for efficiency. 
+
+                if (i<=5) {
+                    for (int n = 0; n< numberOfEquations; n++) {
+                        for (int j = 1; j < rows-methodType*quickPatch; j++) {
+                            //printf("%15.14e ",K[j][n]);
+                        }
+                        //printf("\n");
+                    }
+                }
                 
                 //If we are in an adaptive method situation, use that method and exit the iterations loop.
                 if (methodType == 1) {
@@ -593,7 +608,10 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     //If we are 50% (or whatever value is specified) under what the error we want is, adjust. 
                     underError = true;
                 }
-                if (noAdaptiveTimestep == false) {
+                if (noAdaptiveTimestep == false && step != (minStepAdjustment * originalStep)) {
+                    //before adjusting, record what the step size was a second ago. 
+                    previousStep = step;
+                    
                     //If we have no trouble...
                     if (underError == false && overError == false) {
                         errorSatisfactory = true;
@@ -621,8 +639,11 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         errorSatisfactory = true;
                     } else if (step < minStepAdjustment * originalStep){
                         step = minStepAdjustment * originalStep;
-                        errorSatisfactory = true;
                     }
+
+                    if (floored == true) {
+                        errorSatisfactory = true;
+                    } 
 
                     //We also declare some minium and maximum step conditions. 
                     if (step > absoluteMaxStep) {
@@ -630,12 +651,16 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         errorSatisfactory = true;
                     } else if (step < absoluteMinStep){
                         step = absoluteMinStep;
-                        errorSatisfactory = true;
+                        floored = true;
+                        //This is set here since we need to run through one more time, not end right here. 
                     }
 
                 } else {
                     errorSatisfactory = true;
                     underError = false;
+                    //This area is triggered when we purposefully take single steps
+                    //Or, alternatively, when we hit the minimum step size adjustment on the *previous* step
+                    //but still needed to go through one more time. 
                 }
                 //With that, the step size has been changed. If errorSatisfactory is still false, 
                 //it goes back and performs everything again with the new step size. 
@@ -660,9 +685,10 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         }
 
         if (underError == true) {
-            currentPosition = currentPosition + originalStep;
+            currentPosition = currentPosition + previousStep;
             //if we had an underError and increased the step size, 
             //well, we kept the older points so we use that to update our current location.
+            //previousStep rather than originalStep since sometimes multiple iterations go through. 
         } else {
             currentPosition = currentPosition + step;
             //in any other case we use the new step. Even the case where the step wasn't actually changed. 
@@ -750,7 +776,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         currentPosition = bound+step*(i+1);
         
         //AB Validation
-        if (validate == true && i == adamsBashforthOrder && methodType == 2) {
+        if (validate == true && i == adamsBashforthOrder) {
             //validation is gonna be tricky for AB methods, as it requries exact values for everything.
             //Thus, let's create an array of exact values. 
             double yValidateValues[adamsBashforthOrder][numberOfEquations];
@@ -816,7 +842,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 yValidateSmolStep[n] = (yValidateSmolStep[n] - yValidateSmolStepResult[n]);
                 //Now the validation steps contain their own errors, we can compare them.
                 printf("Order of Error: %i\t%f\n",n, log2(yValidateBigStep[n]/yValidateSmolStep[n]));
-                printf("And the other stuff...: %li %f %f\n",i, yValidateBigStep[n],yValidateSmolStep[n]);
+                //printf("And the other stuff...: %li %f %f\n",i, yValidateBigStep[n],yValidateSmolStep[n]);
                 //print out the estimated error.
         }
     }
