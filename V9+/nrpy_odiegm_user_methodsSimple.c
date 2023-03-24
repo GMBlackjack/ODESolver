@@ -45,7 +45,7 @@ void exceptionHandler (double x, double y[])
 
 int doWeTerminate (double x, double y[], struct constantParameters *params)
 {
-    if (x >= 2) {
+    if (x >= 8) {
         return 1;
     } else {
         return 0;
