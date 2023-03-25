@@ -49,6 +49,7 @@ nrpy_odiegm_evolve_alloc (size_t dim)
   e->bound = 0.0; //This will need to be adjusted to handle other starting positions. 
   e->currentPosition = e->bound;
   e->noAdaptiveTimestep = false; //We assume adaptive by default. 
+  e->validate = false; //this one will need to be manually set if a user wants internal validation. 
   return e;
 }
 
@@ -163,6 +164,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
     double currentPosition = *t;
     double step = *h; 
 
+    bool validate = e->validate;
     unsigned long int i = e->count;
     double bound = e->bound;
     bool noAdaptiveTimestep = e->noAdaptiveTimestep;
@@ -253,6 +255,12 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         double yBigStep[numberOfEquations];
         double ySmolSteps[numberOfEquations];
 
+        double yBigStepHalf[numberOfEquations];
+        double ySmolStepsHalf[numberOfEquations];
+        //These are here for validation only. We would rather not declare them at all, 
+        //but they have to be declared outside the loop
+        //so the information within can be stored through the iterations. 
+
         //One could argue that since the small steps will become our result 
         //we shouldn't declare it, however we are actually
         //NOT going to assign them to the actual answer y until we compare and run the adaptive
@@ -312,7 +320,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 
                 //For AB method we only go through once, but do so with some additional operations. 
 
-                if (i == 0 && iteration == 1 && methodType == 0 && adamsBashforthOrder == 0) {
+                if (i == 0 && iteration == 1 && validate == false && methodType == 0 && adamsBashforthOrder == 0) {
                     //don't take unecessary steps, if we are on the first step 
                     //and have no need for the large step, ignore it.
                     //Since we always want the first step to go through 
@@ -411,7 +419,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 //Note that we specifically set ySmol to the value, not anything else. 
                 //This is because we wish to avoid abusing if statements.
 
-                if (iteration == 1) {
+                if (iteration == 1 || (i == 0 && validate == true && methodType == 1)) {
                     for (int n = 0; n<numberOfEquations; n++) {
                         yBigStep[n] = ySmolSteps[n];
                         ySmolSteps[n] = y[n];
@@ -419,7 +427,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         //no matter the type of method. 
                     }
                 }
-                //This only runs on the first iteration, 
+                //This only runs on the first iteration (or during validation), 
                 //setting the big step to the right value
                 //and resetting the small steps for when we actually use it. 
                 //This odd structure exists purely for efficiency. 
@@ -446,9 +454,97 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                         }
                         ySmolSteps[n] = K[0][n]; //Set ySmol to the new estimated value. 
                     }
-
+                    if (validate == true && i == 0 && iteration ==1) {
+                        //do nothing fancy. 
+                    } else {
                         iteration = 4; //break out after we get to the end, 
                         //we don't need to go any further. 
+                        //We avoid this on the first iteration only if we want to validate. 
+                    }
+                }
+
+                if (validate == true && i == 0) {
+                    if (methodType == 0 && iteration == 2) {
+                        //The normal validation for the normal RK methods. 
+
+                        //Now that we've performed the approximation's first step at half the size, we can estimate the order.
+
+                        //Create 2 arrays to hold the true values. 
+                        double truthValidateBig[numberOfEquations];
+                        double truthValidateSmol[numberOfEquations];
+                        //Fill it with the true values.
+                        dydt->trueFunction(bound+step,truthValidateBig);
+                        dydt->trueFunction(bound+step*0.5,truthValidateSmol);
+                        //Then from this calculate the estimated errors.
+
+                        for (int n = 0; n < numberOfEquations; n++) {
+                            truthValidateBig[n] = (truthValidateBig[n] - yBigStep[n]);
+                            truthValidateSmol[n] = (truthValidateSmol[n] - ySmolSteps[n]);
+                            //Now the validation steps contain their own errors, we can compare them.
+                            printf("Order of Error: %i\t%f\n",n, log2(truthValidateBig[n]/truthValidateSmol[n]));
+                            //print out the estimated error. 
+                        }
+                        //Note: this will not produce an integer, but with proper data it will be close to an integer
+                        //and the validation would be performed by rounding. 
+                        //However one can also get errors if the results are too exact, roundoff error can ruin the calcluation. 
+                        //Using larger step sizes usually removes that. 
+                    } else if (methodType == 1) {
+                        if (iteration == 1) {
+                            //validation has to be run differently for inherently adaptive methods, since we don't calculate half-steps naturally. 
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                yBigStepHalf[n] = yBigStep[n];
+                                ySmolStepsHalf[n] = ySmolSteps[n];
+                                //store the previous values for next loop.
+                                ySmolSteps[n] = y[n];
+                                //This also needs to be cleared again, for once we do not want it to carry over. 
+                            }
+                        } else {
+                            //This should only trigger on iteration == 2. 
+                            //The normal validation for the inherently adaptive RK methods. 
+
+                            //Now that we've performed the approximation's first step at half the size, we can estimate the order
+                            //for both internal calculations
+
+                            //Create 2 arrays to hold the true values. 
+                            double truthValidateBig[numberOfEquations];
+                            double truthValidateSmol[numberOfEquations];
+                            //Fill it with the true values. 
+                            dydt->trueFunction(bound+step,truthValidateBig);
+                            dydt->trueFunction(bound+step*0.5,truthValidateSmol);
+                            
+                            //Then from this calculate the estimated errors.
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                truthValidateBig[n] = (truthValidateBig[n] - yBigStepHalf[n]);
+                                truthValidateSmol[n] = (truthValidateSmol[n] - yBigStep[n]);
+                                //Now the validation steps contain their own errors, we can compare them.
+                                printf("Order of ErrorA: %i\t%f\n",n, log2(truthValidateBig[n]/truthValidateSmol[n]));
+                                //print out the estimated error. 
+                            }
+                            dydt->trueFunction(bound+step,truthValidateBig);
+                            dydt->trueFunction(bound+step*0.5,truthValidateSmol);
+
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                truthValidateBig[n] = (truthValidateBig[n] - ySmolStepsHalf[n]);
+                                truthValidateSmol[n] = (truthValidateSmol[n] - ySmolSteps[n]);
+                                //Now the validation steps contain their own errors, we can compare them.
+                                printf("Order of ErrorB: %i\t%f\n",n, log2(sqrt(truthValidateBig[n]*truthValidateBig[n])/sqrt(truthValidateSmol[n]*truthValidateSmol[n])));
+                                //print out the estimated error. 
+                            }
+                            //Admittedly the meaning of the Big and Smol steps become quite convoluted when validating the
+                            //adaptive methods. Thing of big as the higher order result, and smol as the lower order in this case. 
+
+                            //Note: this will not produce an integer, but with proper data it will be close to an integer
+                            //and the validation would be performed by rounding. 
+                            //However one can also get errors if the results are too exact, roundoff error can ruin the calcluation. 
+                            //Using larger step sizes usually removes that. 
+                            for (int n = 0; n < numberOfEquations; n++) {
+                                yBigStep[n] = yBigStepHalf[n];
+                                ySmolSteps[n] = ySmolStepsHalf[n];
+                                //now undo what we just did so the corret values can be read.
+                            }
+                        }
+                    } 
+
                 }
 
                 if (adamsBashforthOrder != 0) {
@@ -678,6 +774,78 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
         }         
 
         currentPosition = bound+step*(i+1);
+        
+        //AB Validation
+        if (validate == true && i == adamsBashforthOrder) {
+            //validation is gonna be tricky for AB methods, as it requries exact values for everything.
+            //Thus, let's create an array of exact values. 
+            double yValidateValues[adamsBashforthOrder][numberOfEquations];
+            //We will use this twice, once to do a sigle step, once to do a half step.
+            //note the indeces are reversed from the usual yValues matrix. 
+            
+            for (int m = 0; m <adamsBashforthOrder; m++) {
+                dydt->trueFunction(bound+step*(adamsBashforthOrder-m),yValidateValues[m]);
+            }
+            //This fills the entire yValidateValues array with exact values. 
+
+            double yValidateBigStep[numberOfEquations];
+            double yValidateBigStepResult[numberOfEquations];
+            //We declare two variables for validation in regards to the larger step. 
+
+            for (int n = 0; n< numberOfEquations; n++) {
+                yValidateBigStepResult[n] = yValidateValues[0][n];
+            }  
+            //Take the actual true values for the present here. 
+
+            for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
+                dydt->function(bound+step*(adamsBashforthOrder-m), yValidateValues[m], yValidateBigStep, dydt->params);
+                //Evaluate the differential equations, store the result in yValidateBigStep
+                for (int n = 0; n< numberOfEquations; n++) {
+                    yValidateBigStepResult[n] = yValidateBigStepResult[n] + step*butcher[currentRow][m+currentRow]*yValidateBigStep[n];
+                    //Perform the actual AB method. 
+                }  
+            }
+
+            for (int m = 0; m <adamsBashforthOrder; m++) {
+                dydt->trueFunction(bound+step*adamsBashforthOrder-step*0.5*m,yValidateValues[m]);
+            }
+            //Now set the exact values for half steps. The entire array is different
+            //since reaching back in time by half steps alters positions of basically everything
+            //except the present. 
+
+            double yValidateSmolStep[numberOfEquations];
+            double yValidateSmolStepResult[numberOfEquations];
+            //Small values.
+
+            for (int n = 0; n< numberOfEquations; n++) {
+                yValidateSmolStepResult[n] = yValidateValues[0][n];
+            }  
+            //Insert the true values for the present. 
+
+            //The below loop is the same as the previous one, except it makes sure to take half steps carefully.
+            for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
+                dydt->function(bound+step*(adamsBashforthOrder)-step*0.5*m, yValidateValues[m], yValidateSmolStep, dydt->params);
+                for (int n = 0; n< numberOfEquations; n++) {
+                    yValidateSmolStepResult[n] = yValidateSmolStepResult[n] + step*0.5*butcher[currentRow][m+currentRow]*yValidateSmolStep[n];
+                }   
+            }
+                
+            for (int n = 0; n< numberOfEquations; n++) {
+                dydt->trueFunction(bound+step*adamsBashforthOrder+step,yValidateBigStep);
+                dydt->trueFunction(bound+step*adamsBashforthOrder+step*0.5,yValidateSmolStep);
+            } 
+            //Now that we have already used the "...Step" variables for calculation, they can now hold the truth values.       
+            //Reduce, reuse, recycle after all!
+
+            for (int n = 0; n < numberOfEquations; n++) {
+                yValidateBigStep[n] = (yValidateBigStep[n] - yValidateBigStepResult[n]);
+                yValidateSmolStep[n] = (yValidateSmolStep[n] - yValidateSmolStepResult[n]);
+                //Now the validation steps contain their own errors, we can compare them.
+                printf("Order of Error: %i\t%f\n",n, log2(yValidateBigStep[n]/yValidateSmolStep[n]));
+                //printf("And the other stuff...: %li %f %f\n",i, yValidateBigStep[n],yValidateSmolStep[n]);
+                //print out the estimated error.
+        }
+    }
             
     }
     //Now we adjust any values that changed so everything outside the function can know it. 

@@ -101,6 +101,8 @@ typedef struct
   unsigned long int count; //equivalent to i. Keeps track of steps taken.
   //unsigned long int failed_steps; //we automatically handle tossing out "bad" steps.
   bool noAdaptiveTimestep; //a simple toggle for forcing the steps to be the same or not.
+  bool validate; //Do we seek internal validation of the method? Will probably remove this once we get
+  //Taylor validation. 
 } nrpy_odiegm_evolve;
 
 typedef struct {
