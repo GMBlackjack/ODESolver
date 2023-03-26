@@ -20,7 +20,7 @@ int main()
     //The system of differential equations can be found declared in diffyQEval()
     //in nrpy_odiegm_user_methods.c
 
-    double step = 0.00001; //the "step" value. Initial step if using an adaptive method.
+    double step = 0.01; //the "step" value. Initial step if using an adaptive method.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 4; //How many equations are in our system?
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
@@ -34,7 +34,7 @@ int main()
     //without using GSL's awkward setup. False by default. 
 
     bool reportErrorActual = false;
-    bool reportErrorEstimates = false;
+    bool reportErrorEstimates = true;
     //AB methods do not report error estimates. 
     //BE WARNED: setting reporError (either kind) to true makes it print out all error data on another line,
     //the file will have to be read differently. 
@@ -236,7 +236,7 @@ int main()
             //Print the error estimates we already have. 
             fprintf(fp2, "Error Estimates:,\t");
             for (int n = 0; n < numberOfEquations; n++) {
-                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,*(d->e->yerr+n)); //find a way to grab the error. 
+                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,*(d->e->yerr)); //find a way to grab the error. 
             }
             //constant estimates not reported, only diffyQ values. 
             fprintf(fp2,"\n");

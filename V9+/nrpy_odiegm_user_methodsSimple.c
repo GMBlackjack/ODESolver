@@ -13,10 +13,11 @@
 
 struct constantParameters { 
     int dimension; //number that says how many we have. 
+    //double rho;
     //add more as necessary.  
 };
 
-//Here's the prototypes     double rho;for the functions in this file, stated explicitly for the sake of clarity. 
+//Here's the prototypes for the functions in this file, stated explicitly for the sake of clarity. 
 void exceptionHandler (double x, double y[]); 
 //handles any exceptions the user may wish to define.
 int doWeTerminate (double x, double y[], struct constantParameters *params); //user-defined endpoint.
