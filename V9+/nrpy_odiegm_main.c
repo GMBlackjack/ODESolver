@@ -20,8 +20,8 @@ int main()
     //The system of differential equations can be found declared in diffyQEval()
     //in nrpy_odiegm_user_methods.c
 
-    double step = 0.01; //the "step" value. Initial step if using an adaptive method.
-    double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
+    double step = 0.00001; //the "step" value. Initial step if using an adaptive method.
+    double currentPosition = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 4; //How many equations are in our system?
     int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number 
@@ -34,7 +34,7 @@ int main()
     //without using GSL's awkward setup. False by default. 
 
     bool reportErrorActual = false;
-    bool reportErrorEstimates = true;
+    bool reportErrorEstimates = false;
     //AB methods do not report error estimates. 
     //BE WARNED: setting reporError (either kind) to true makes it print out all error data on another line,
     //the file will have to be read differently. 
@@ -96,7 +96,6 @@ int main()
     }
     d->s->adamsBashforthOrder = adamsBashforthOrder;
     d->e->noAdaptiveTimestep = noAdaptiveTimestep;
-    d->e->bound = bound;
     //based on what type of method we are using, we adjust some parameters within the driver.
 
         if (methodType == 2) {
@@ -117,13 +116,9 @@ int main()
     //No. Not as far as we can tell, anyway. Structs are a pain to iterate through,
     //and we can't know what form the user is going to hand us the struct in. 
 
-    double currentPosition = bound;
-    //When we adjust the step size it is not possible to algorithmically determine our position. 
-    //Thus this variable is required.
-
     //This here sets the initial conditions as declared in getInitialCondition()
     getInitialCondition(y); 
-    constEval(bound, y,&cp);
+    constEval(currentPosition, y,&cp);
 
     FILE *fp2;
     fp2 = fopen(fileName,"w");
@@ -136,8 +131,8 @@ int main()
     //not adding the newline character until we're done.
     //We print both to console and to the file for the initial conditions, but later only print to file.
     //First, print the location we are at. 
-    printf("INITIAL: Position:,\t%f,\t",bound);
-    fprintf(fp2, "Position:,\t%15.14e,\t",bound);
+    printf("INITIAL: Position:,\t%f,\t",currentPosition);
+    fprintf(fp2, "Position:,\t%15.14e,\t",currentPosition);
     //Second, go through and print the result for every single equation in our system.
     for (int n = 0; n < numberOfEquations; n++) {
         printf("Equation %i:,\t%15.14e,\t",n, y[n]);

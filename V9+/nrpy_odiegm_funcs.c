@@ -46,8 +46,7 @@ nrpy_odiegm_evolve_alloc (size_t dim)
   
   e->count = 0;
   e->last_step = 0.0; //By default we don't use this value. 
-  e->bound = 0.0; //This will need to be adjusted to handle other starting positions. 
-  e->currentPosition = e->bound;
+  e->currentPosition = 0.0;//This will need to be adjusted to handle other starting positions. 
   e->noAdaptiveTimestep = false; //We assume adaptive by default. 
   return e;
 }
@@ -161,10 +160,10 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
     //Don't need a million arrows everywhere. 
     int numberOfEquations = (int)(dydt->dimension);
     double currentPosition = *t;
+    e->currentPosition = *t;
     double step = *h; 
 
     unsigned long int i = e->count;
-    double bound = e->bound;
     bool noAdaptiveTimestep = e->noAdaptiveTimestep;
 
     int methodType = s->methodType; 
@@ -644,7 +643,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
         for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
             //we actually need m=0 in this case, the "present" is evaluated. 
-            xInsert = bound + step*(i-m);
+            xInsert = currentPosition + step*(1-m);
             //the "current locaiton" depends on how far in the past we are.
             for (int j = 0; j < numberOfEquations ; j++) {
                 yInsert[j] = yValues[j][m];
@@ -677,7 +676,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
             //We have now completed stepping. 
         }         
 
-        currentPosition = bound+step*(i+1);
+        currentPosition = currentPosition+step*(1+1);
             
     }
     //Now we adjust any values that changed so everything outside the function can know it. 
@@ -685,6 +684,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
     *h = step;
     *t = currentPosition;
+    e->currentPosition = currentPosition;
     e->count = i+1;
     //Update things stored outside the function. 
 

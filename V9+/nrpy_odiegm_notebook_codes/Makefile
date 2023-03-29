@@ -4,12 +4,12 @@ CFLAGS =   -O2 -march=native -fopenmp -Wall -Wno-unused-variable -std=gnu99
 #CFLAGS =  -O2 -g -Wall -Wno-unused-variable -Wno-unknown-pragmas -std=gnu99
 #CFLAGS =   -O2 -march=native -fopenmp -Wall -Wno-unused-variable -std=gnu99
 INCLUDEDIRS = 
-all: ODESolverSimple1  main.o
+all: ODESolverCustom  main.o
 main.o: main.c
 	$(CC) $(CFLAGS) $(INCLUDEDIRS)  -c main.c -o main.o
 
-ODESolverSimple1:   main.o
-	$(CC)   main.o -o ODESolverSimple1 -lm -lgomp
+ODESolverCustom:   main.o
+	$(CC)   main.o -o ODESolverCustom -lm -lgomp
 
 clean:
-	rm -f *.o */*.o *~ */*~ ./#* *.txt *.dat *.avi *.png ODESolverSimple1
+	rm -f *.o */*.o *~ */*~ ./#* *.txt *.dat *.avi *.png ODESolverCustom

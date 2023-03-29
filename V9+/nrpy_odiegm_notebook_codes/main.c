@@ -1100,8 +1100,7 @@ void constEval (double x, const double y[], struct constantParameters *params)
 int diffyQEval (double x, double y[], double dydx[], void *params)
 {
 
-    dydx[0] = y[1];
-    dydx[1] = y[0] + x;
+    dydx[0] = y[0];
 
     return 1;
 }
@@ -1112,8 +1111,7 @@ int knownQEval (double x, double y[]) //This function is the other one passed us
 //Allows the specific_methods file to be completely agnostic to whatever the user is doing. 
 {
 
-    y[0] = exp(x) + exp(-x) - x;
-    y[1] = exp(x) - exp(-x) - 1;
+    y[0] = exp(x);
 
     return 1;
     //report "success"
@@ -1121,8 +1119,7 @@ int knownQEval (double x, double y[]) //This function is the other one passed us
 
 void getInitialCondition (double y[])
 {
-    y[0] = 2.0;
-    y[1] = -1.0;
+    y[0] = 1.0;
 }
 
 void assignConstants (double c[], struct constantParameters *params)
@@ -1132,7 +1129,7 @@ void assignConstants (double c[], struct constantParameters *params)
 
 
 /*
- * Simple Example: u''=u+x Solver
+ * User Custom System
  */
 int main() {
 
@@ -1146,20 +1143,20 @@ int main() {
     //The system of differential equations can be found declared in diffyQEval()
     //in nrpy_odiegm_user_methods.c
 
-    double step = 0.05; //the "step" value. Initial step if using an adaptive method.
+    double step = 0.01; //the "step" value. Initial step if using an adaptive method.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
-    int numberOfEquations = 2; //How many equations are in our system?
+    int numberOfEquations = 1; //How many equations are in our system?
     int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number 
     //and cause an overflow in the functions in user_methods
-    const int SIZE = 20; //How many steps are we going to take? 
+    const int SIZE = 200; //How many steps are we going to take? 
     //This is the default termination condition. 
     int adamsBashforthOrder = 3; //if using the AB method, specify which order you want.
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
-    bool noAdaptiveTimestep = true; //Sometimes we just want to step forward uniformly 
+    bool noAdaptiveTimestep = false; //Sometimes we just want to step forward uniformly 
     //without using GSL's awkward setup. False by default. 
 
-    bool reportErrorActual = true;
+    bool reportErrorActual = false;
     bool reportErrorEstimates = false;
     //AB methods do not report error estimates. 
     //BE WARNED: setting reporError (either kind) to true makes it print out all error data on another line,
@@ -1170,15 +1167,15 @@ int main() {
     double relativeErrorLimit = 1e-14; //how big do we let the relative error be?
     //Note: there are a lot more error control numbers that can be set inside the control "object" d->c.
 
-    char fileName[] = "oSData.txt"; //Where do you want the data to print?
+    char fileName[] = "oUData.txt"; //Where do you want the data to print?
 
     //Now we set up the method. 
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_euler;
+    stepType = nrpy_odiegm_step_RK4;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_euler;
+    stepType2 = nrpy_odiegm_step_RK4;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 
