@@ -28,7 +28,7 @@ int main()
     //and cause an overflow in the functions in user_methods
     const int SIZE = 100000; //How many steps are we going to take? 
     //This is the default termination condition. 
-    int adamsBashforthOrder = 3; //if using the AB method, specify which order you want.
+    int adamsBashforthOrder = 4; //if using the AB method, specify which order you want.
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
     bool noAdaptiveTimestep = false; //Sometimes we just want to step forward uniformly 
     //without using GSL's awkward setup. False by default. 

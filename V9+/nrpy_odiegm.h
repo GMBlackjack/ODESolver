@@ -96,6 +96,7 @@ typedef struct
   double last_step; //Set to 1 when we are at the last step.
   //Probably not used but the user may want it for some reason. 
   //Could be used as a termination condition. 
+  double bound; //the point at which we started is sometimes important. 
   double currentPosition; //It's a good idea to know where we are at any given time. 
   unsigned long int count; //equivalent to i. Keeps track of steps taken.
   //unsigned long int failed_steps; //we automatically handle tossing out "bad" steps.

@@ -1,5 +1,5 @@
 #include "nrpy_odiegm_funcs.c" //nrpy_odiegm itself.
-#include "nrpy_odiegm_user_methodsSimple.c" //user-dependent functions. 
+#include "nrpy_odiegm_user_methods.c" //user-dependent functions. 
 //TODO:
 //Jupyter notebook Adjusents. 
 
@@ -20,23 +20,23 @@ int main()
     //The system of differential equations can be found declared in diffyQEval()
     //in nrpy_odiegm_user_methods.c
 
-    double step = 0.1; //the "step" value. Initial step if using an adaptive method.
+    double step = 0.00001; //the "step" value. Initial step if using an adaptive method.
     double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
-    int numberOfEquations = 1; //How many equations are in our system?
-    int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
+    int numberOfEquations = 4; //How many equations are in our system?
+    int numberOfConstants = 1; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number 
     //and cause an overflow in the functions in user_methods
     const int SIZE = 100000; //How many steps are we going to take? 
     //This is the default termination condition. 
-    int adamsBashforthOrder = 19; //if using the AB method, specify which order you want.
+    int adamsBashforthOrder = 4; //if using the AB method, specify which order you want.
     //If we are not using the AB method this is set to 0 later automatically. 4 by default. 
-    bool noAdaptiveTimestep = false; //Sometimes we just want to step forward uniformly 
+    bool noAdaptiveTimestep = true; //Sometimes we just want to step forward uniformly 
     //without using GSL's awkward setup. False by default. 
-    bool validate = true; //Set to true if you wish to run a validation test. 
+    bool validate = false; //Set to true if you wish to run a validation test. 
     //Only works if solution is already known.
     //Spits out nonsense if no true solution is provided.
 
-    bool reportErrorActual = true;
+    bool reportErrorActual = false;
     bool reportErrorEstimates = false;
     //AB methods do not report error estimates. 
     //BE WARNED: setting reporError (either kind) to true makes it print out all error data on another line,
@@ -51,11 +51,11 @@ int main()
 
     //Now we set up the method. 
     const nrpy_odiegm_step_type * stepType;
-    stepType = nrpy_odiegm_step_AB;
+    stepType = nrpy_odiegm_step_RK4;
     //Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * stepType2;
-    stepType2 = nrpy_odiegm_step_DP8;
+    stepType2 = nrpy_odiegm_step_RK4;
     //this is a second step type "object" (struct) for hybridizing. 
     //Only used if the original type is AB.
     //Set to AB to use pure AB method. 

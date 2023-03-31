@@ -46,6 +46,7 @@ nrpy_odiegm_evolve_alloc (size_t dim)
   
   e->count = 0;
   e->last_step = 0.0; //By default we don't use this value. 
+  e->bound = 0.0; //This will be adjusted when the first step is taken.
   e->currentPosition = 0.0;//This will need to be adjusted to handle other starting positions. 
   e->noAdaptiveTimestep = false; //We assume adaptive by default. 
   return e;
@@ -164,6 +165,11 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
     double step = *h; 
 
     unsigned long int i = e->count;
+    if (i == 0) {
+        e->bound = currentPosition;
+        //if this is our first ever step, record what the starting position was. 
+    }
+
     bool noAdaptiveTimestep = e->noAdaptiveTimestep;
 
     int methodType = s->methodType; 
@@ -362,6 +368,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     //Due to the way the butcher table is formatted, 
                     //start our index at 1 and stop at the end. 
                     double xInsert = currentPosition+shift*step*scale + butcher[j-1][0]*step*scale;
+
                     //xInsert does not change much for different tables, 
                     //just adjust the "step correction" term.
                     //xInsert is the same for every equation too.
@@ -476,7 +483,9 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 //we cannot use it to limit the constant's error. 
                 //We originally had the error limiter set its own values. 
                 //GSL's formatting requries us to change this. 
-                dydt->function(currentPosition+step,ySmolSteps, errorLimiter, dydt->params);
+
+                    dydt->function(currentPosition+step,ySmolSteps, errorLimiter, dydt->params);
+
                 //Now SmolSteps is used to set the errorLimiter. 
                 for (int n = 0; n<numberOfEquations; n++) {
                     errorLimiter[n] = absoluteErrorLimit + relativeErrorLimit*(ayErrorScaler*sqrt(ySmolSteps[n]*ySmolSteps[n]) + adyErrorScaler*step*sqrt(errorLimiter[n]*errorLimiter[n]));
@@ -593,8 +602,12 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
             //well, we kept the older points so we use that to update our current location.
             //previousStep rather than originalStep since sometimes multiple iterations go through. 
         } else {
-            currentPosition = currentPosition + step;
             //in any other case we use the new step. Even the case where the step wasn't actually changed. 
+            if (noAdaptiveTimestep == true) {
+                currentPosition = e->bound + (i+1)*step;
+            } else {
+                currentPosition = currentPosition + step;
+            }
         }
 
         //Before, the values were Printed here. This method no longer prints, 
@@ -643,7 +656,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
         for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
             //we actually need m=0 in this case, the "present" is evaluated. 
-            xInsert = currentPosition + step*(1-m);
+            xInsert = e->bound + step*(i-m);
             //the "current locaiton" depends on how far in the past we are.
             for (int j = 0; j < numberOfEquations ; j++) {
                 yInsert[j] = yValues[j][m];
@@ -676,7 +689,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
             //We have now completed stepping. 
         }         
 
-        currentPosition = currentPosition+step*(1+1);
+        currentPosition = e->bound+step*(i+1);
             
     }
     //Now we adjust any values that changed so everything outside the function can know it. 

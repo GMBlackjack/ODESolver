@@ -334,8 +334,8 @@ nrpy_odiegm_evolve_alloc (size_t dim)
   
   e->count = 0;
   e->last_step = 0.0; //By default we don't use this value. 
-  e->bound = 0.0; //This will need to be adjusted to handle other starting positions. 
-  e->currentPosition = e->bound;
+  e->bound = 0.0; //This will be adjusted when the first step is taken.
+  e->currentPosition = 0.0;//This will need to be adjusted to handle other starting positions. 
   e->noAdaptiveTimestep = false; //We assume adaptive by default. 
   return e;
 }
@@ -453,10 +453,15 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
     //Don't need a million arrows everywhere. 
     int numberOfEquations = (int)(dydt->dimension);
     double currentPosition = *t;
+    e->currentPosition = *t;
     double step = *h; 
 
     unsigned long int i = e->count;
-    double bound = e->bound;
+    if (i == 0) {
+        e->bound = currentPosition;
+        //if this is our first ever step, record what the starting position was. 
+    }
+
     bool noAdaptiveTimestep = e->noAdaptiveTimestep;
 
     int methodType = s->methodType; 
@@ -655,6 +660,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                     //Due to the way the butcher table is formatted, 
                     //start our index at 1 and stop at the end. 
                     double xInsert = currentPosition+shift*step*scale + butcher[j-1][0]*step*scale;
+
                     //xInsert does not change much for different tables, 
                     //just adjust the "step correction" term.
                     //xInsert is the same for every equation too.
@@ -769,7 +775,9 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                 //we cannot use it to limit the constant's error. 
                 //We originally had the error limiter set its own values. 
                 //GSL's formatting requries us to change this. 
-                dydt->function(currentPosition+step,ySmolSteps, errorLimiter, dydt->params);
+
+                    dydt->function(currentPosition+step,ySmolSteps, errorLimiter, dydt->params);
+
                 //Now SmolSteps is used to set the errorLimiter. 
                 for (int n = 0; n<numberOfEquations; n++) {
                     errorLimiter[n] = absoluteErrorLimit + relativeErrorLimit*(ayErrorScaler*sqrt(ySmolSteps[n]*ySmolSteps[n]) + adyErrorScaler*step*sqrt(errorLimiter[n]*errorLimiter[n]));
@@ -886,8 +894,12 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
             //well, we kept the older points so we use that to update our current location.
             //previousStep rather than originalStep since sometimes multiple iterations go through. 
         } else {
-            currentPosition = currentPosition + step;
             //in any other case we use the new step. Even the case where the step wasn't actually changed. 
+            if (noAdaptiveTimestep == true) {
+                currentPosition = e->bound + (i+1)*step;
+            } else {
+                currentPosition = currentPosition + step;
+            }
         }
 
         //Before, the values were Printed here. This method no longer prints, 
@@ -936,7 +948,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
         for (int m = adamsBashforthOrder-currentRow-1; m >= 0; m--) {
             //we actually need m=0 in this case, the "present" is evaluated. 
-            xInsert = bound + step*(i-m);
+            xInsert = e->bound + step*(i-m);
             //the "current locaiton" depends on how far in the past we are.
             for (int j = 0; j < numberOfEquations ; j++) {
                 yInsert[j] = yValues[j][m];
@@ -969,7 +981,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
             //We have now completed stepping. 
         }         
 
-        currentPosition = bound+step*(i+1);
+        currentPosition = e->bound+step*(i+1);
             
     }
     //Now we adjust any values that changed so everything outside the function can know it. 
@@ -977,6 +989,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
 
     *h = step;
     *t = currentPosition;
+    e->currentPosition = currentPosition;
     e->count = i+1;
     //Update things stored outside the function. 
 
@@ -1144,7 +1157,7 @@ int main() {
     //in nrpy_odiegm_user_methods.c
 
     double step = 0.01; //the "step" value. Initial step if using an adaptive method.
-    double bound = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
+    double currentPosition = 0.0; //where the boundary/initial condition is. Same for every equation in the system.
     int numberOfEquations = 1; //How many equations are in our system?
     int numberOfConstants = 0; //How many constants do we wish to separately evaluate and report? 
     //If altering the two "numberOf" ints, be careful it doesn't go over the actual number 
@@ -1223,7 +1236,6 @@ int main() {
     }
     d->s->adamsBashforthOrder = adamsBashforthOrder;
     d->e->noAdaptiveTimestep = noAdaptiveTimestep;
-    d->e->bound = bound;
     //based on what type of method we are using, we adjust some parameters within the driver.
 
         if (methodType == 2) {
@@ -1246,13 +1258,9 @@ int main() {
     //No. Not as far as we can tell, anyway. Structs are a pain to iterate through,
     //and we can't know what form the user is going to hand us the struct in. 
 
-    double currentPosition = bound;
-    //When we adjust the step size it is not possible to algorithmically determine our position. 
-    //Thus this variable is required.
-
     //This here sets the initial conditions as declared in getInitialCondition()
     getInitialCondition(y); 
-    constEval(bound, y,&cp);
+    constEval(currentPosition, y,&cp);
 
     FILE *fp2;
     fp2 = fopen(fileName,"w");
@@ -1268,8 +1276,8 @@ int main() {
     //not adding the newline character until we're done.
     //We print both to console and to the file for the initial conditions, but later only print to file.
     //First, print the location we are at. 
-    printf("INITIAL: Position:,\t%f,\t",bound);
-    fprintf(fp2, "Position:,\t%15.14e,\t",bound);
+    printf("INITIAL: Position:,\t%f,\t",currentPosition);
+    fprintf(fp2, "Position:,\t%15.14e,\t",currentPosition);
     //Second, go through and print the result for every single equation in our system.
     for (int n = 0; n < numberOfEquations; n++) {
         printf("Equation %i:,\t%15.14e,\t",n, y[n]);
@@ -1314,6 +1322,7 @@ int main() {
         //printf("\n");
         fprintf(fp2,"\n");
     }
+
     
 
 
