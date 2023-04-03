@@ -1275,7 +1275,7 @@ int main() {
     //The print function needs to be adaptable to any size of data. 
     //We can do this with multiple print functions and just 
     //not adding the newline character until we're done.
-    //We print both to console and to the file for the initial conditions, but later only print to file.
+    //We print both to the terminal and to the file for the initial conditions, but later only print to file.
     //First, print the location we are at. 
     printf("INITIAL: Position:,\t%f,\t",currentPosition);
     fprintf(fp2, "Position:,\t%15.14e,\t",currentPosition);
