@@ -32,7 +32,7 @@ int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                              double t1, double *h, double y[]);
 
 // The rest of these are just modifications on the above, 
-// in fact all of them call evolve_apply when run. 
+// in fact all of them call nrpy_odiegm_evolve_apply when run. 
 int nrpy_odiegm_evolve_apply_fixed_step (nrpy_odiegm_evolve * e,
                                         nrpy_odiegm_control * con,
                                         nrpy_odiegm_step * step,
