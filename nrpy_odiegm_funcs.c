@@ -2,6 +2,7 @@
 
 // This file contains the actual definitions for the funcitons outlined in nrpy_odiegm_proto.c
 
+// Memory allocation functions.
 nrpy_odiegm_step *
 nrpy_odiegm_step_alloc (const nrpy_odiegm_step_type * T, size_t dim)
 {
@@ -102,7 +103,7 @@ nrpy_odiegm_driver * nrpy_odiegm_driver_alloc_y_new (const nrpy_odiegm_system * 
   return state;
 }
 
-// Memory freeing methods. 
+// Memory freeing functions. 
 void nrpy_odiegm_control_free (nrpy_odiegm_control * c)
 {
   free (c);
@@ -725,7 +726,7 @@ int nrpy_odiegm_evolve_apply_fixed_step (nrpy_odiegm_evolve * e,
                                         const nrpy_odiegm_system * dydt,
                                         double *t, double h0,
                                         double y[]){
-    // This me    //Update things stored outside the function. thod performs a single fixed time step. 
+    // This method performs a single fixed time step.  
     e->no_adaptive_step = true;
     nrpy_odiegm_evolve_apply(e, con, step, dydt, t, *t+h0, &h0, y);
 

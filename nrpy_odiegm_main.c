@@ -281,7 +281,6 @@ int main()
     // MEMORY SHENANIGANS
 
     printf("ODE Solver \"Odie\" V10 Shutting Down...\n");
-    printf("%20.19e\n", M_PI);
     return 0;
 
 }

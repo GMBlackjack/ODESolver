@@ -25,7 +25,7 @@ void nrpy_odiegm_driver_free (nrpy_odiegm_driver * state);
 // they should always work regardless of the form of the system passed, the method passed, and even
 // if the user does something dumb it shouldn't crash. It will spit out nonsense in those cases, though. 
 
-// This is the main function, it does most of the actual work. 
+// This is the primary function, it does most of the actual work. 
 int nrpy_odiegm_evolve_apply (nrpy_odiegm_evolve * e, nrpy_odiegm_control * c,
                              nrpy_odiegm_step * s,
                              const nrpy_odiegm_system * dydt, double *t,

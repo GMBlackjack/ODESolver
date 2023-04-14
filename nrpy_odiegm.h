@@ -1,7 +1,14 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
+    
+
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <math.h>
+// #include <stdbool.h>
 
 // Note: math.h requries the "-lm" arg be added at the END of tasks.json's arguments.
 // https://askubuntu.com/questions/332884/how-to-compile-a-c-program-that-uses-math-h
@@ -25,6 +32,7 @@
 // Butcher tables can be found at the bottom of this file. 
 // Function prototypes can be found in nrpy_odiegm_proto.c
 
+
 typedef struct {
     int (*function) (double x, double y[], double dydx[], void *params);
     // The function passed to this struct contains the definitions of the differnetial equations. 
@@ -39,6 +47,7 @@ typedef struct {
     // params->dimension stores how many there are. 
     // Struct definition can be found in nrpy_odiegm_user_methods.c
 } nrpy_odiegm_system;
+
 
 typedef struct {
     // Unlike with the system struct above, this step_type struct does not need
@@ -55,6 +64,7 @@ typedef struct {
     //Two of these step_type "objects" might be needed at once, depending on implementation. 
     //Fortunately you can make as many as you want. 
 } nrpy_odiegm_step_type;
+
 
 typedef struct {
   const nrpy_odiegm_step_type *type; 
@@ -101,6 +111,8 @@ typedef struct
   bool no_adaptive_step; // A simple toggle for forcing the steps to be the same or not.
 } nrpy_odiegm_evolve;
 
+
+
 typedef struct {
     const nrpy_odiegm_system *sys; // ODE system 
     nrpy_odiegm_evolve *e;         // evolve struct 
@@ -110,6 +122,8 @@ typedef struct {
     // Curiously, this is where the step size is held. 
     // Usually it's passed to functions directly though. 
 } nrpy_odiegm_driver;
+
+
 
 // A collection of butcher tables, courtesy of NRPy+.
 // This section just has definitions. 
@@ -222,3 +236,4 @@ const nrpy_odiegm_step_type nrpy_odiegm_step_AB0 = {19,19,19,&butcher_AB};
 const nrpy_odiegm_step_type *nrpy_odiegm_step_AB = &nrpy_odiegm_step_AB0;
 // NOT comparable to GSL's AB method, so it is not named as such.
 // Not adaptive, has to use constant time steps.  
+
