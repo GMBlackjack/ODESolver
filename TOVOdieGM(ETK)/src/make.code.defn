@@ -1,0 +1,3 @@
+SRCS = nrpy_odiegm_main.c
+
+SUBDIRS = 
