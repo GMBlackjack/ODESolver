@@ -726,12 +726,13 @@ int nrpy_odiegm_evolve_apply_fixed_step (nrpy_odiegm_evolve * e,
                                         const nrpy_odiegm_system * dydt,
                                         double *t, double h0,
                                         double y[]){
-    // This method performs a single fixed time step.  
+    // This method performs a single fixed time step. 
     e->no_adaptive_step = true;
     nrpy_odiegm_evolve_apply(e, con, step, dydt, t, *t+h0, &h0, y);
 
     return 0;
 }
+
 int nrpy_odiegm_driver_apply (nrpy_odiegm_driver * d, double *t,
                              const double t1, double y[]){
     // Takes as many steps as requested at the driver level. 

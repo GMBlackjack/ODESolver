@@ -6,7 +6,7 @@
 // every system of differential equations desired.
 // That said, since it's general, it trades off some efficiency to handle
 // every type of method. If high efficiency is desired, it is recommended that the user 
-// make a custom main(). 
+// make a custom main function. 
 
 int main()
 {
@@ -266,6 +266,20 @@ int main()
         if (do_we_terminate(current_position, y, &cp) == 1) {
             i = size;
             // If we need to bail, set i to size to break the loop.
+            // Also potentially a good idea: print the final line. 
+            printf("FINAL: Position:,\t%15.14e,\t",current_position);
+            for (int n = 0; n < number_of_equations; n++) {
+                // printf("Equation %i:,\t%15.14e,\t",n, y[n]);
+                printf("Equation %i:,\t%15.14e,\t",n, y[n]);
+            }
+
+            for (int n = 0; n < number_of_constants; n++) {
+                // printf("Constant %i:,\t%15.14e,\t",n, c[n]);
+                printf("Constant %i:,\t%15.14e,\t",n, c[n]);
+                // printf("Constant %i:,\t%15.14e %15.14e,\n",n, c[n], y[n]);
+            }
+            // printf("\n");
+            printf("\n");
         }
     }
 
