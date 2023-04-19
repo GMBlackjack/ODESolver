@@ -19,7 +19,7 @@ int main()
     // The system of differential equations can be found declared in diffy_Q_eval
     // in nrpy_odiegm_user_methods.c
 
-    double step = 0.00001; // the "step" value. Initial step if using an adaptive method.
+    double step = 0.0001; // the "step" value. Initial step if using an adaptive method.
     double current_position = 0.0; // where the boundary/initial condition is. 
     // Same for every equation in the system.
     int number_of_equations = 4; // How many equations are in our system?
@@ -34,7 +34,7 @@ int main()
     // without using GSL's awkward setup. False by default. 
 
     bool report_error_actual = false;
-    bool report_error_estimates = false;
+    bool report_error_estimates = true;
     // AB methods do not report error estimates. 
     // BE WARNED: setting reporError (either kind) to true makes
     // it print out all error data on another line,
@@ -51,11 +51,11 @@ int main()
 
     // Now we set up the method. 
     const nrpy_odiegm_step_type * step_type;
-    step_type = nrpy_odiegm_step_AB;
+    step_type = nrpy_odiegm_step_RK4;
     // Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * step_type_2;
-    step_type_2 = nrpy_odiegm_step_AB;
+    step_type_2 = nrpy_odiegm_step_RK4;
     // This is a second step type "object" (struct) for hybridizing. 
     // Only used if the original type is AB.
     // Set to AB to use pure AB method. 
@@ -232,7 +232,7 @@ int main()
             // Print the error estimates we already have. 
             fprintf(fp2, "Error Estimates:,\t");
             for (int n = 0; n < number_of_equations; n++) {
-                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,*(d->e->yerr)); 
+                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,(d->e->yerr[n])); 
             }
             // Constant estimates not reported, only differential equation values. 
             fprintf(fp2,"\n");
