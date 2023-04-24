@@ -118,6 +118,7 @@ int main()
     // This here sets the initial conditions as declared in get_initial_condition
     get_initial_condition(y); 
     const_eval(current_position, y,&cp);
+    assign_constants(c,&cp); 
 
     FILE *fp2;
     fp2 = fopen(file_name,"w");
@@ -264,8 +265,10 @@ int main()
         }
 
         if (do_we_terminate(current_position, y, &cp) == 1) {
-            i = size;
-            // If we need to bail, set i to size to break the loop.
+            i = size-1;
+            // If we need to bail, set i to size-1 to break the loop. The -1 is there to make sure final line printing works. 
+        } 
+        if (i == size-1) {
             // Also potentially a good idea: print the final line. 
             printf("FINAL: Position:,\t%15.14e,\t",current_position);
             for (int n = 0; n < number_of_equations; n++) {
