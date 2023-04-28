@@ -10,6 +10,79 @@ CCTK_INT TOVOdieGM_size "Maximum number of steps to take."
   1:* :: "Minimum of 1 step."
 } 100000
 
+CCTK_REAL TOVOdieGM_outer_radius_limit "Condition on terminating evolution at a value of r=something."
+{
+  0.0:* :: "Must be positive"
+} 1e6
+
+
+KEYWORD TOVOdieGM_step_type "What type of method are we using? (using int codes since C doesn't like strings)"
+{
+  "Euler" :: "Euler's Method."
+  "RK2H" :: "Second Order Runge-Kutta Heun."
+  "RK2M" :: "RK2 Midpoint."
+  "RK2R" :: "RK2 Ralston."
+  "RK3" :: "Runge-Kutta Third Order."
+  "RK3H" :: "RK3 Heun."
+  "RK3R" :: "RK3 Ralston."
+  "RK3S" :: "SSPRK3, Strong Stability Preserving."
+  "RK4" :: "Runge-Kutta Fourth Order, the standard."
+  "DP5" :: "Dormand-Prince Fifth Order."
+  "CK5" :: "Cash-Karp Fifth Order."
+  "CK5A" :: "CK5 Alternate."
+  "DP6" :: "Dormand-Prince Sixth Order."
+  "L6" :: "Luther's Sixth Order Method."
+  "DP8" :: "Dormand-Prince Eighth Order."
+  "AHE" :: "Adaptive Heun-Euler (2nd Order)."
+  "ABS" :: "Adaptive Bogacki-Shampine (3rd Order)."
+  "ARKF" :: "Adaptive Runge-Kutta-Fehlberg (5th Order)."
+  "ACK" :: "Adaptive Cash-Karp (5th Order)."
+  "ADP5" :: "Adaptive Dormand-Prince Fifth Order."
+  "ADP8" :: "Adaptive Dormand-Prince Eighth Order."
+  "AB" :: "Adams-Bashforth (Not an RK-type method)."
+} "RK4"
+
+KEYWORD TOVOdieGM_step_type_2 "What type of method are we using? (using int codes since C doesn't like strings)"
+{
+  "Euler" :: "Euler's Method."
+  "RK2H" :: "Second Order Runge-Kutta Heun."
+  "RK2M" :: "RK2 Midpoint."
+  "RK2R" :: "RK2 Ralston."
+  "RK3" :: "Runge-Kutta Third Order."
+  "RK3H" :: "RK3 Heun."
+  "RK3R" :: "RK3 Ralston."
+  "RK3S" :: "SSPRK3, Strong Stability Preserving."
+  "RK4" :: "Runge-Kutta Fourth Order, the standard."
+  "DP5" :: "Dormand-Prince Fifth Order."
+  "CK5" :: "Cash-Karp Fifth Order."
+  "CK5A" :: "CK5 Alternate."
+  "DP6" :: "Dormand-Prince Sixth Order."
+  "L6" :: "Luther's Sixth Order Method."
+  "DP8" :: "Dormand-Prince Eighth Order."
+  "AHE" :: "Adaptive Heun-Euler (2nd Order)."
+  "ABS" :: "Adaptive Bogacki-Shampine (3rd Order)."
+  "ARKF" :: "Adaptive Runge-Kutta-Fehlberg (5th Order)."
+  "ACK" :: "Adaptive Cash-Karp (5th Order)."
+  "ADP5" :: "Adaptive Dormand-Prince Fifth Order."
+  "ADP8" :: "Adaptive Dormand-Prince Eighth Order."
+  "AB" :: "Adams-Bashforth (Not an RK-type method)."
+} "RK4"
+
+CCTK_REAL TOVOdieGM_central_baryon_density "What's the initial baryon density? (Used to calculate initial pressure)."
+{
+  0.0:* :: "Must be positive"
+} 0.129285
+
+CCTK_REAL TOVOdieGM_Gamma "Power parameter for polytropic Equation of State"
+{
+  0.0:* :: "Must be positive"
+} 2.0
+
+CCTK_REAL TOVOdieGM_K "Weight parameter for polytropic Equation of State"
+{
+  0.0:* :: "Must be positive"
+} 1.0
+
 CCTK_INT TOVOdieGM_adams_bashforth_order "Order of Adams Bashforth method if used."
 {
   1:19 :: "We only support up to 19th order."
@@ -34,70 +107,9 @@ BOOLEAN TOVOdieGM_no_adaptive_step "Enable if we want to force uniform time step
 {
 } "no"
 
-BOOLEAN TOVOdieGM_report_error_actual "Enable to report actual errors, if they exist."
-{
-} "no"
-
 BOOLEAN TOVOdieGM_report_error_estimates "Enable to report estimated errors, if they exist.."
 {
 } "no"
-
-CCTK_INT TOVOdieGM_step_type "What type of method are we using? (using int codes since C doesn't like strings)"
-{
-  1 :: "Euler's Method."
-  2 :: "Second Order Runge-Kutta Heun."
-  3 :: "RK2 Midpoint."
-  4 :: "RK2 Ralston."
-  5 :: "Runge-Kutta Third Order."
-  6 :: "RK3 Heun."
-  7 :: "RK3 Ralston."
-  8 :: "SSPRK3, Strong Stability Preserving."
-  9 :: "Runge-Kutta Fourth Order, the standard."
-  10 :: "Dormand-Prince Fourth Order."
-  11 :: "Cash-Karp Fifth Order."
-  12 :: "CK5 Alternate."
-  13 :: "Dormand-Prince Sixth Order."
-  14 :: "Luther's Sixth Order Method."
-  15 :: "Dormand-Prince Eighth Order."
-  16 :: "Adaptive Heun-Euler (2nd Order)."
-  17 :: "Adaptive Bogacki-Shampine (3rd Order)."
-  18 :: "Adaptive Runge-Kutta-Fehlberg (5th Order)."
-  19 :: "Adaptive Cash-Karp (5th Order)."
-  20 :: "Adaptive Dormand-Prince Fifth Order."
-  21 :: "Adaptive Dormand-Prince Eighth Order."
-  22 :: "Adams-Bashforth (Not an RK-type method)."
-} 9
-
-CCTK_INT TOVOdieGM_step_type_2 "What type of method are we using? (using int codes since C doesn't like strings)"
-{
-  1 :: "Euler's Method."
-  2 :: "Second Order Runge-Kutta Heun."
-  3 :: "RK2 Midpoint."
-  4 :: "RK2 Ralston."
-  5 :: "Runge-Kutta Third Order."
-  6 :: "RK3 Heun."
-  7 :: "RK3 Ralston."
-  8 :: "SSPRK3, Strong Stability Preserving."
-  9 :: "Runge-Kutta Fourth Order, the standard."
-  10 :: "Dormand-Prince Fourth Order."
-  11 :: "Cash-Karp Fifth Order."
-  12 :: "CK5 Alternate."
-  13 :: "Dormand-Prince Sixth Order."
-  14 :: "Luther's Sixth Order Method."
-  15 :: "Dormand-Prince Eighth Order."
-  16 :: "Adaptive Heun-Euler (2nd Order)."
-  17 :: "Adaptive Bogacki-Shampine (3rd Order)."
-  18 :: "Adaptive Runge-Kutta-Fehlberg (5th Order)."
-  19 :: "Adaptive Cash-Karp (5th Order)."
-  20 :: "Adaptive Dormand-Prince Fifth Order."
-  21 :: "Adaptive Dormand-Prince Eighth Order."
-  22 :: "Adams-Bashforth (Not an RK-type method)."
-} 9
-
-CCTK_REAL TOVOdieGM_initial_pressure "What's the initial pressure? (Can be calculated from central density)."
-{
-  0.0:* :: "Must be positive"
-} 0.016714611225000002
 
 CCTK_REAL TOVOdieGM_scale_factor "Error paramater: scales the step adjustment"
 {
@@ -148,3 +160,34 @@ CCTK_REAL TOVOdieGM_error_lower_tolerance "Lower threshold of error magnitude to
 {
   0.0:* :: "Must be positive"
 } 0.5
+
+CCTK_INT TOV_Populate_Timelevels "Populate that amount of timelevels" STEERABLE=always
+{
+  1:3 :: "1 (default) to 3"
+} 1
+
+shares:HydroBase
+
+EXTENDS KEYWORD initial_hydro ""
+{
+  "tov" :: "TOV star initial hydrobase variables"
+}
+
+shares:admbase
+
+EXTENDS KEYWORD initial_data
+{
+  "tov" :: "TOV star initial metric"
+}
+
+EXTENDS KEYWORD initial_lapse
+{
+  "tov" :: "TOV star initial lapse; isotropic"
+}
+
+EXTENDS KEYWORD initial_shift
+{
+  "tov" :: "TOV star initial shift"
+}
+
+USES KEYWORD metric_type

@@ -61,11 +61,12 @@ void exception_handler (double x, double y[])
 
 int do_we_terminate (double x, double y[], struct constant_parameters *params)
 {
+    DECLARE_CCTK_PARAMETERS
     // This funciton might be empty. It's only used if the user wants to have 
     // a special termination condition.
     // Today we do. We terminate once the pressure hits zero, or goes below it. 
     // Notably we also consider ridiculously small pressures to be "zero" since we might be asymptotic. 
-    if (y[0] < 1e-16) {
+    if (x > TOVOdieGM_outer_radius_limit) {
         return 1;
     } else {
         return 0;
@@ -75,10 +76,12 @@ int do_we_terminate (double x, double y[], struct constant_parameters *params)
 
 void const_eval (double x, const double y[], struct constant_parameters *params)
 {
+    DECLARE_CCTK_PARAMETERS
     // Sometimes we want to evaluate constants in the equation that change, 
     // but do not have derivative forms.
     // Today, we do that for the total energy density. 
-    params->rho = sqrt(y[0]) + y[0];
+    // params->rho = sqrt(y[0]) + y[0];
+    params->rho = pow(y[0] / TOVOdieGM_K , 1.0 / TOVOdieGM_Gamma) + y[0] / (TOVOdieGM_Gamma - 1.0);
     // The total energy density only depends on pressure. 
 }
 
@@ -145,7 +148,7 @@ void get_initial_condition (double y[])
 {
     DECLARE_CCTK_PARAMETERS
     // be sure to have these MATCH the equations in diffy_Q_eval
-    y[0] = TOVOdieGM_initial_pressure; // Pressure, can be calcualated from central baryon density. 
+    y[0] = TOVOdieGM_K*pow(TOVOdieGM_central_baryon_density,TOVOdieGM_Gamma); // Pressure, can be calcualated from central baryon density. 
     y[1] = 0.0; // nu
     y[2] = 0.0; // mass
     y[3] = 0.0; // r-bar

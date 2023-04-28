@@ -2,3 +2,8 @@ SCHEDULE nrpy_odiegm_main AT CCTK_INITIAL
 {
 	LANG: C
 } "Performs the TOV initial data solution algorithm."
+
+SCHEDULE interp_main AT CCTK_POSTINITIAL
+{
+	LANG: C
+} "Interpolates the TOV initial data and performs post-processing to normalize certain quantities."

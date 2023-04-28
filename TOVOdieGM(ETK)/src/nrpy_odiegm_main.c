@@ -1,6 +1,8 @@
 #include "nrpy_odiegm_funcs.c" // nrpy_odiegm itself.
 #include "nrpy_odiegm_user_methods.c" // User-dependent functions. 
 
+#include <string.h>
+// This #include is not usually part of Odie, it's here to process ETK inputs. 
 
 // This file is technically not part of Odie, it is just an example implementation.
 // However, it is exceptionally versatile, and can be used to run virtually 
@@ -36,12 +38,11 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
     bool no_adaptive_step = TOVOdieGM_no_adaptive_step; // Sometimes we just want to step forward uniformly 
     // without using GSL's awkward setup. False by default. 
 
-    bool report_error_actual = TOVOdieGM_report_error_actual;
+    // bool report_error_actual = TOVOdieGM_report_error_actual; // not possible in this implementation. 
     bool report_error_estimates = TOVOdieGM_report_error_estimates;
     // AB methods do not report error estimates. 
-    // BE WARNED: setting reporError (either kind) to true makes
-    // it print out all error data on another line,
-    // the file will have to be read differently. 
+    // BE WARNED: setting reporError (either kind) adjusts the output file, adding four values to the file after each line. 
+    // Make sure the file reading program handles it properly, whatever ends up being used. 
 
     // ERROR PARAMETERS: Use these to set limits on the erorr. 
     double absolute_error_limit = TOVOdieGM_absolute_error_limit; // How big do we let the absolute error be?
@@ -69,94 +70,95 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
     
     // Since we take input directly from ETK for this and C (as far as we know) doesn't let us use strings to 
     // define names, we are going to put an ugly switch statement here. 
-    // turns out you can't actually switch strings in C. Great. ChatGPT converted the code to elseif ladders.
-	if (TOVOdieGM_step_type == 1) {
+    // turns out you can't actually switch strings in C. Great. ChatGPT was used to adjust this. 
+    
+	if (strcmp("Euler",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_euler;
-	} else if (TOVOdieGM_step_type == 2) {
+	} else if (strcmp("RK2H",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_RK2_Heun;
-	} else if (TOVOdieGM_step_type == 3) {
+	} else if (strcmp("RK2M",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_RK2_MP;
-	} else if (TOVOdieGM_step_type == 4) {
+	} else if (strcmp("RK2R",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_RK2_Ralston;
-	} else if (TOVOdieGM_step_type == 5) {
+	} else if (strcmp("RK3",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_RK3;
-	} else if (TOVOdieGM_step_type == 6) {
+	} else if (strcmp("RK3H",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_RK3_Heun;
-	} else if (TOVOdieGM_step_type == 7) {
+	} else if (strcmp("RK3R",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_RK3_Ralston;
-	} else if (TOVOdieGM_step_type == 8) {
+	} else if (strcmp("RK3S",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_SSPRK3;
-	} else if (TOVOdieGM_step_type == 9) {
+	} else if (strcmp("RK4",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_RK4;
-	} else if (TOVOdieGM_step_type == 10) {
+	} else if (strcmp("DP5",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_DP5;
-	} else if (TOVOdieGM_step_type == 11) {
+	} else if (strcmp("CK5",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_DP5alt;
-	} else if (TOVOdieGM_step_type == 12) {
+	} else if (strcmp("CK5A",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_CK5;
-	} else if (TOVOdieGM_step_type == 13) {
+	} else if (strcmp("DP6",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_DP6;
-	} else if (TOVOdieGM_step_type == 14) {
+	} else if (strcmp("L6",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_L6;
-	} else if (TOVOdieGM_step_type == 15) {
+	} else if (strcmp("DP8",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_DP8;
-	} else if (TOVOdieGM_step_type == 16) {
+	} else if (strcmp("AHE",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_AHE;
-	} else if (TOVOdieGM_step_type == 17) {
+	} else if (strcmp("ABS",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_ABS;
-	} else if (TOVOdieGM_step_type == 18) {
+	} else if (strcmp("ARKF",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_ARKF;
-	} else if (TOVOdieGM_step_type == 19) {
+	} else if (strcmp("ACK",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_ACK;
-	} else if (TOVOdieGM_step_type == 20) {
+	} else if (strcmp("ADP5",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_ADP5;
-	} else if (TOVOdieGM_step_type == 21) {
+	} else if (strcmp("ADP8",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_ADP8;
-	} else if (TOVOdieGM_step_type == 22) {
+	} else if (strcmp("AB",TOVOdieGM_step_type) == 0) {
 	    step_type = nrpy_odiegm_step_AB;
-		if (TOVOdieGM_step_type_2 == 1) {
+		if (strcmp("Euler",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_euler;
-		} else if (TOVOdieGM_step_type_2 == 2) {
+		} else if (strcmp("RK2H",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_RK2_Heun;
-		} else if (TOVOdieGM_step_type_2 == 3) {
+		} else if (strcmp("RK2M",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_RK2_MP;
-		} else if (TOVOdieGM_step_type_2 == 4) {
+		} else if (strcmp("RK2R",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_RK2_Ralston;
-		} else if (TOVOdieGM_step_type_2 == 5) {
+		} else if (strcmp("RK3",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_RK3;
-		} else if (TOVOdieGM_step_type_2 == 6) {
+		} else if (strcmp("RK3H",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_RK3_Heun;
-		} else if (TOVOdieGM_step_type_2 == 7) {
+		} else if (strcmp("RK3R",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_RK3_Ralston;
-		} else if (TOVOdieGM_step_type_2 == 8) {
+		} else if (strcmp("RK3S",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_SSPRK3;
-		} else if (TOVOdieGM_step_type_2 == 9) {
+		} else if (strcmp("RK4",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_RK4;
-		} else if (TOVOdieGM_step_type_2 == 10) {
+		} else if (strcmp("DP5",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_DP5;
-		} else if (TOVOdieGM_step_type_2 == 11) {
+		} else if (strcmp("CK5",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_DP5alt;
-		} else if (TOVOdieGM_step_type_2 == 12) {
+		} else if (strcmp("CK5A",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_CK5;
-		} else if (TOVOdieGM_step_type_2 == 13) {
+		} else if (strcmp("DP6",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_DP6;
-		} else if (TOVOdieGM_step_type_2 == 14) {
+		} else if (strcmp("L6",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_L6;
-		} else if (TOVOdieGM_step_type_2 == 15) {
+		} else if (strcmp("DP8",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_DP8;
-		} else if (TOVOdieGM_step_type_2 == 16) {
+		} else if (strcmp("AHE",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_AHE;
-		} else if (TOVOdieGM_step_type_2 == 17) {
+		} else if (strcmp("ABS",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_ABS;
-		} else if (TOVOdieGM_step_type_2 == 18) {
+		} else if (strcmp("ARKF",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_ARKF;
-		} else if (TOVOdieGM_step_type_2 == 19) {
+		} else if (strcmp("ACK",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_ACK;
-		} else if (TOVOdieGM_step_type_2 == 20) {
+		} else if (strcmp("ADP5",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_ADP5;
-		} else if (TOVOdieGM_step_type_2 == 21) {
+		} else if (strcmp("ADP8",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_ADP8;
-		} else if (TOVOdieGM_step_type_2 == 22) {
+		} else if (strcmp("AB",TOVOdieGM_step_type_2) == 0) {
 		    step_type_2 = nrpy_odiegm_step_AB;
 		}
 	}
@@ -243,13 +245,26 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
     // This here sets the initial conditions as declared in get_initial_condition
     get_initial_condition(y); 
     const_eval(current_position, y,&cp);
+    assign_constants(c,&cp);
 
     // Before continuing, let's print out our initial data. 
     // The print function is automatically adaptable to any size of data. 
     // We print both to the terminal and to the file for the initial conditions, 
     // but later only print to the file.
-
-    // First, print the location we are at. 
+    printf("Data given as radius, energy density, baryon density, pressure, mass, ln(lapse), polytropic radius, {estimated errors: pressure, ln(lapse), mass, polytropic radius}\n");
+    printf("INITIAL: %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e ", current_position, c[0], TOVOdieGM_central_baryon_density, 
+    			y[0], y[2], y[1], y[3]);
+    fprintf(fp2,"%15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e ", current_position, c[0], TOVOdieGM_central_baryon_density, 
+    			y[0], y[2], y[1], y[3]);
+    if (report_error_estimates == true) {
+        printf("%15.14e %15.14e %15.14e %15.14e ",0.0,0.0,0.0,0.0);
+        fprintf(fp2, "%15.14e %15.14e %15.14e %15.14e ",0.0,0.0,0.0,0.0); 
+    }
+    printf("\n");
+    fprintf(fp2,"\n");
+    
+    // What follows is the original printing routine, we replaced this for ETK interface purposes. 
+    /* // First, print the location we are at. 
     printf("INITIAL: Position:,\t%f,\t",current_position);
     fprintf(fp2, "Position:,\t%15.14e,\t",current_position);
     // Second, go through and print the result for every single equation in our system.
@@ -279,22 +294,7 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
             fprintf(fp2, "Constant %i:,\t0.0,\t",n);
         }   
         fprintf(fp2,"\n");
-    }
-    
-    if (report_error_actual == true) {
-        // In order to keep things neat and regular in the file, print a first line of errors. 
-        // Even though by necessity all of them must be zero. 
-        fprintf(fp2, "Errors:,\t");
-        for (int n = 0; n < number_of_equations; n++) {
-            fprintf(fp2, "Equation %i:,\t0.0,\t",n);
-            fprintf(fp2, "Truth:,\t%15.14e,\t",y[n]);
-        }
-        for (int n = 0; n < number_of_constants; n++) {
-            fprintf(fp2, "Constant %i:,\t0.0,\t",n);
-            fprintf(fp2, "Truth:,\t%15.14e,\t",c[n]);
-        }   
-        fprintf(fp2,"\n");
-    }
+    } */
 
     // SECTION II: The Loop
 
@@ -331,8 +331,21 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
         // These lines are to make sure the constant updates. 
         // And exception constraints are applied.  
 
-        // Printing section.
-        // Uncomment for live updates. Prints to the file automatically.
+        // Printing section. Altered for ETK use. 
+	    /* printf("%15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e ", current_position, c[0], pow(y[0]/TOVOdieGM_K,1.0/TOVOdieGM_Gamma), 
+	    			y[0], y[2], y[1], y[3]);  */
+	    fprintf(fp2,"%15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e ", current_position, c[0], pow(y[0]/TOVOdieGM_K,1.0/TOVOdieGM_Gamma), 
+	    			y[0], y[2], y[1], y[3]);
+	    if (report_error_estimates == true) {
+	    	// printf("%15.14e %15.14e %15.14e %15.14e ",(d->e->yerr[0]),(d->e->yerr[1]),(d->e->yerr[2]),(d->e->yerr[3])); 
+                fprintf(fp2, "%15.14e %15.14e %15.14e %15.14e ",(d->e->yerr[0]),(d->e->yerr[1]),(d->e->yerr[2]),(d->e->yerr[3])); 
+	    }
+	    // printf("\n");
+	    fprintf(fp2,"\n");
+		
+        
+        
+        /* // Uncomment for live updates. Prints to the file automatically.
         // printf("Position:,\t%15.14e,\t",current_position);
         fprintf(fp2, "Position:,\t%15.14e,\t",current_position);
         for (int n = 0; n < number_of_equations; n++) {
@@ -352,40 +365,39 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
             // Print the error estimates we already have. 
             fprintf(fp2, "Error Estimates:,\t");
             for (int n = 0; n < number_of_equations; n++) {
-                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,*(d->e->yerr)); 
+                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n,(d->e->yerr[n])); 
             }
             // Constant estimates not reported, only differential equation values. 
             fprintf(fp2,"\n");
-        }
-            
-        if (report_error_actual == true) {
-            // Now if we have an actual error to compare against, there's some more work to do. 
-            double y_truth[number_of_equations];
-            double c_truth[number_of_constants];
-            struct constant_parameters cp_truth; 
-            // True values for everything we compare with.
-            
-            known_Q_eval(current_position,y_truth);
-            const_eval(current_position,y_truth,&cp_truth);
-
-            assign_constants(c,&cp); 
-            assign_constants(c_truth,&cp_truth);
- 
-            fprintf(fp2, "Errors:,\t");
-            for (int n = 0; n < number_of_equations; n++) {
-                fprintf(fp2, "Equation %i:,\t%15.14e,\t",n, y_truth[n]-y[n]);
-                fprintf(fp2, "Truth:,\t%15.14e,\t",y_truth[n]);
-            }
-            for (int n = 0; n < number_of_constants; n++) {
-                fprintf(fp2, "Constant %i Error:,\t%15.14e,\t",n, c_truth[n]-c[n]);
-                fprintf(fp2, "Truth:,\t%15.14e,\t",c_truth[n]);
-            } 
-            fprintf(fp2,"\n");
-        }
+        } */
 
         if (do_we_terminate(current_position, y, &cp) == 1) {
-            i = size;
-            // If we need to bail, set i to size to break the loop.
+            i = size-1;
+            // If we need to bail, set i to size-1 to break the loop. The -1 is there to make sure final line printing works. 
+        } 
+        if (i == size-1) {
+       	    // Also potentially a good idea: print the final line. 
+            
+            printf("FINAL: %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e ", current_position, c[0], pow(y[0]/TOVOdieGM_K,1.0/TOVOdieGM_Gamma), 
+	    			y[0], y[2], y[1], y[3]);
+	    if (report_error_estimates == true) {
+	    	printf("%15.14e %15.14e %15.14e %15.14e ",(d->e->yerr[0]),(d->e->yerr[1]),(d->e->yerr[2]),(d->e->yerr[3]));  
+	    }
+	    printf("\n");
+            
+            /* printf("FINAL: Position:,\t%15.14e,\t",current_position);
+            for (int n = 0; n < number_of_equations; n++) {
+                // printf("Equation %i:,\t%15.14e,\t",n, y[n]);
+                printf("Equation %i:,\t%15.14e,\t",n, y[n]);
+            }
+
+            for (int n = 0; n < number_of_constants; n++) {
+                // printf("Constant %i:,\t%15.14e,\t",n, c[n]);
+                printf("Constant %i:,\t%15.14e,\t",n, c[n]);
+                // printf("Constant %i:,\t%15.14e %15.14e,\n",n, c[n], y[n]);
+            }
+            // printf("\n");
+            printf("\n"); */
         }
     }
 
@@ -399,6 +411,8 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
 
     nrpy_odiegm_driver_free(d);
     // MEMORY SHENANIGANS
+    
+    // interp_main();
 
     printf("ODE Solver \"Odie\" V10 Shutting Down...\n");
 

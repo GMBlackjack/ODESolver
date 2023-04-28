@@ -1,4 +1,5 @@
 implements: TOVOdieGM
+inherits: ADMBase, HydroBase
 
 public:
 
