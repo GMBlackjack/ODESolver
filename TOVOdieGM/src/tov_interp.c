@@ -329,7 +329,7 @@ void interp_main(CCTK_ARGUMENTS) {
 		
 		// First, the values we have calculated directly. 
 		rho[i3D] = rho_baryon;
-		printf("%i %i %i %8.7e %8.7e %8.7e %15.14e %15.14e %15.14e \n", i, j, k, x[i3D], y[i3D], z[i3D], radiusETK, rho[i3D], rho_baryon);
+		//printf("%i %i %i %8.7e %8.7e %8.7e %15.14e %15.14e %15.14e \n", i, j, k, x[i3D], y[i3D], z[i3D], radiusETK, rho[i3D], rho_baryon);
 		press[i3D] = P;
 		
 		// There is never a shift vector. 
