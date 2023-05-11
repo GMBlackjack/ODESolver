@@ -1,0 +1,23 @@
+# Extremely basic parfile for TOVOdieGM. 
+# Uses a hard-coded Polytropic EOS. 
+
+ActiveThorns = "Carpet InitBase"
+ActiveThorns = "ADMBase HydroBase"
+ActiveThorns = "TOVOdieGM"
+
+TOVOdieGM::TOVOdieGM_step = 1.e-10
+TOVOdieGM::TOVOdieGM_size = 1000000
+TOVOdieGM::TOVOdieGM_report_error_estimates = yes
+TOVOdieGM::TOVOdieGM_step_type = "DP8"
+TOVOdieGM::TOVOdieGM_absolute_max_step = 10000
+# When evolving outside the star it's possible to get overzealous. 
+TOVOdieGM::TOVOdieGM_K = 100
+TOVOdieGM::TOVOdieGM_Gamma = 2
+TOVOdieGM::TOVOdieGM_use_EOS_table = "no"
+TOVOdieGM::TOVOdieGM_central_baryon_density = 0.0065
+
+ADMBase::initial_data            = "TOVOdieGM"
+ADMBase::initial_lapse           = "TOVOdieGM"
+ADMBase::initial_shift           = "TOVOdieGM"
+ADMBase::initial_dtlapse         = "zero"
+ADMBase::initial_dtshift         = "zero"

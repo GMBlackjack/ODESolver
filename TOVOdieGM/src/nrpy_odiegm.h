@@ -24,7 +24,7 @@
 // However, unecessary variables were removed, and many new ones were added. 
 // Butcher tables can be found at the bottom of this file. 
 // Function prototypes can be found in nrpy_odiegm_proto.c
-
+	
 typedef struct {
     int (*function) (double x, double y[], double dydx[], void *params);
     // The function passed to this struct contains the definitions of the differnetial equations. 

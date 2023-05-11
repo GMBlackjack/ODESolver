@@ -1,2 +1,38 @@
-FILL OUT LATER
-This program produces TOV initial data using the Odie Ordinary Differential Equation Solver.
+This program produces TOV initial data using the Odie Ordinary Differential Equation Solver. It has a built in polytropic Equation of State it can use, but it is also designed to use Tabulated EOSs through the Thorn EOS_Omni. 
+
+For basic use, TOVOdieGM only assumes the thorns ADMBase and HydroBase are active, as those are the Thorns it writes data to--so those and their dependencies should always be active. Make sure to set any relevant keywords in ADMBase and HydroBase to "TOVOdieGM". The list of values this might apply to can be found at the bottom of the param.ccl file. However, if for some reason you don't want to use the data in the forms ADMBase and HydroBase offer, TOVOdieGM always produces raw files with the data for the TOV star. These file names can be specified with the parameters `TOVOdieGM_file_name` for the raw calculated data and `TOVOdieGM_file_name_adjusted` for values that get normalized in post-processing before interpolation occurs. The order of values in these files are reported when TOVOdieGM runs, but for completeness sake they are repeated here. 
+
+For the main file: Data given as radius, energy density, baryon density, pressure, mass, 2ln(lapse), polytropic radius, {estimated errors: pressure, 2ln(lapse), mass, polytropic radius}.
+The braced quantities are only reported if estimated errors are requested and applicable. 
+
+For the adjusted file: Post processing data reported as radius, normalized isotropic radius, scaled square lapse, scaled conformal factor^4.
+
+There will be the same number of lines in both files, so they correlate and can be read together if so desired. In addition, the Thorn also prints some things to the console to help users keep track of things: It reports what file names are being used, what the order is of the method being used, the initial data, the final point evaluated, and lastly it reports the isotropic radius, radius, and mass at the edge of the star, which is usually the most important set of results. If you see "Interpolation Successful!" that means the data was sucessfully written to ADMBase and HydroBase. 
+
+Recommended thorns include CartGrid3D and CoordBase for actually choosing where the data reported to ADMBase and HydroBase goes. 
+
+If you want to use a Tabulated EOS, you will have to provide your own Table and it has to be compatible with the Thorn EOS_Omni. Once you do that, simply set the parameter `TOVOdieGM_use_EOS_table` to "yes" and tell EOS_Omni to read the table and where to find the table, the rest should be handled automatically.  
+
+Two example paramater files come with the Thorn--one for a polytropic TOV solution, and one that uses a table. Neither of them do anything with the data once they pass it to ADMBase and HydroBase, that is up to the user to work out. Note: the Tabulated EOS is not provided with the Thorn and must be downloaded elsewhere. For testing we used https://stellarcollapse.org/EOS/LS220_234r_136t_50y_analmu_20091212_SVNr26.h5.bz2. 
+
+Some important parameters:
+
+`TOVOdieGM_step` is the size of the initial step taken. If a nonadaptive method is used, it will be the size for all time steps. 
+
+`TOVOdieGM_size` determines how large of an area the solution covers, specifically it's the maximum number of steps that are allowed to be taken so the program never gets stuck forever. The program will usually exit prior to this once it hits its exit condition of r=1e6, but this can be adjusted by changing `TOVOdieGM_outer_radius_limit`.
+
+`TOVOdieGM_no_adaptive_step` set this to "yes" to enforce uniform step sizes. 
+
+`TOVOdieGM_report_error_estimates` prints more data to the initial data file, specifically error estimates for each step for the four primary quantities that are integrated over initial data. 
+
+`TOVOdieGM_central_baryon_density` is the supposed density at the center of the system. The user has to provide this, it is essentially the primary input value. 
+
+`TOVOdieGM_K` and `TOVOdieGM_Gamma` are the parameters used to quantify the behavior of the built-in polytropic EOS for the TOV Equations. The general relation is Pressure = K (central baryon density)^Gamma. 
+
+`TOVOdieGM_step_type` and `TOVOdieGM_step_type_2` are how you access the many different ODE solving methods we have on file. We have a lot ranging in order from first to eighth, some are adaptive, others are not, and while most are Runge-Kutta style methods we also have an Adams-Bashforth solver. The `type_2` parameter is only used if the other parameter is set to Adams-Bashforth, in which case `type_2` initially solves the TOV Equations with the method in `type_2` but switches to Adams-Bashforth once enough data has been collected. When using Adams-Bashforth be sure to set the order with `TOVOdieGM_adams_bashforth_order`. It supports up to order 19, but this is not recommended as this tends to cause unpredictable and chaotic behavior. 4th or 5th order tends to be the best, but it's usually stable up to 9th. 
+
+To see what types of methods are on offer, please see the param.ccl file, which shows a Keyword list with all the methods present.
+
+If using a table, you can provide `TOVOdieGM_T_initial.` By default this is 0.01, and is only used when a Tabulated EOS is available. 
+
+There are also a very large number of other parameters that can be adjusted, most of which have to do with precisely how the program handles error estimations when doing adaptive timestep. It is not recommended to mess with these unless you know what you're doing. 

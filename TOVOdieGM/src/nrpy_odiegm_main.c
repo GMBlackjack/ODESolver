@@ -11,11 +11,26 @@
 // every type of method. If high efficiency is desired, it is recommended that the user 
 // make a custom main(). 
 
+
+double EOS_table_values_nabber(double T_initial, double **logrho, double **logpres, double **logeps, int *array_size);
+// fancy C++ prototype for interfacing with EOS_Omni
+
 void nrpy_odiegm_main(CCTK_ARGUMENTS)
 {
-    //DECLARE_CCTK_ARGUMENTS_TOV_C_ParamCheck
+    // declare values needed by ETK. 
     DECLARE_CCTK_PARAMETERS
     printf("Beginning ODE Solver \"Odie\" V10...\n");
+    
+    // Before anything, get the tables read. 
+    // They are declared in the user_method.c file so they can be used there. 
+    
+    if (TOVOdieGM_use_EOS_table == true) {
+    	EOS_table_values_nabber(TOVOdieGM_T_initial, &logrho, &logpres, &logeps, &array_size);
+    	// Get the values we need from the EOS table. 
+    }
+    // If we aren't using a table we simply don't do this. 
+
+
 
     // SECTION I: Preliminaries
 
@@ -251,7 +266,7 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
     // The print function is automatically adaptable to any size of data. 
     // We print both to the terminal and to the file for the initial conditions, 
     // but later only print to the file.
-    printf("Data given as radius, energy density, baryon density, pressure, mass, ln(lapse), polytropic radius, {estimated errors: pressure, ln(lapse), mass, polytropic radius}\n");
+    printf("Data given as radius, energy density, baryon density, pressure, mass, 2ln(lapse), polytropic radius, {estimated errors: pressure, 2ln(lapse), mass, polytropic radius}\n");
     printf("INITIAL: %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e ", current_position, c[0], TOVOdieGM_central_baryon_density, 
     			y[0], y[2], y[1], y[3]);
     fprintf(fp2,"%15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e ", current_position, c[0], TOVOdieGM_central_baryon_density, 
@@ -411,8 +426,12 @@ void nrpy_odiegm_main(CCTK_ARGUMENTS)
 
     nrpy_odiegm_driver_free(d);
     // MEMORY SHENANIGANS
-    
-    // interp_main();
+    // We need to free these arrays that were declared in the C++ file.
+    free(logrho);
+    free(logpres);
+    free(logeps);
+    // Chat GPT confirms that this ladder of poitner nonsense
+    // is actually freeing the memory, nothing's left hanging. 
 
     printf("ODE Solver \"Odie\" V10 Shutting Down...\n");
 

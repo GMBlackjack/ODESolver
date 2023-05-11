@@ -4,6 +4,7 @@
 // Author: Zachariah B. Etienne
 //         zachetie **at** gmail **dot* com
 // Stolen from nrpytutorial for use in Odie. 
+// Additions to that purpose made by Gabriel M Steward. 
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,6 +71,8 @@ int count_num_lines_in_file(FILE *in1Dpolytrope) {
 
 int read_datafile__set_arrays(FILE *in1Dpolytrope, REAL *restrict r_Schw_arr,REAL *restrict rho_arr,REAL *restrict rho_baryon_arr,REAL *restrict P_arr,
                               REAL *restrict M_arr,REAL *restrict expnu_arr,REAL *restrict exp4phi_arr,REAL *restrict rbar_arr) {
+  DECLARE_CCTK_PARAMETERS
+  
   char * line = NULL;
 
   size_t len = 0;
@@ -108,30 +111,34 @@ int read_datafile__set_arrays(FILE *in1Dpolytrope, REAL *restrict r_Schw_arr,REA
   }
   
   FILE *fp3;
-  fp3 = fopen("oooData.txt","w"); 
+  fp3 = fopen(TOVOdieGM_file_name_adjusted,"w"); 
+  printf("Printing adjusted data to file '%s'.\n",TOVOdieGM_file_name_adjusted);
+  // The values produced by Odie are not normalized, but people
+  // might still need the normalized values and not want to 
+  // manage them manually. Thus we print the values we adjusted. 
   
   double M_Total = M_arr[Rbar_idx];
   double Rbar_Edge = rbar_arr[Rbar_idx];
   double NU_Edge = expnu_arr[Rbar_idx]; // this is read in as nu first, rather than e^nu. 
   double normalizer = 0.5 * (sqrt(R_Schw * (R_Schw - 2*M_Total)) + R_Schw - M_Total) / (Rbar_Edge);
-  //Normalize and adjust values to what they really are in post-processing, and print it to a new file for the user. 
+  // Normalize and adjust values to what they really are in post-processing, and print it to a new file for the user. 
     	rbar_arr[0] = 0.0;
   	expnu_arr[0] = exp(expnu_arr[0] - NU_Edge + log(1 -2.0*M_Total/R_Schw));
   	rbar_arr[1] = rbar_arr[1] * normalizer;
   	expnu_arr[1] = exp(expnu_arr[1] - NU_Edge + log(1 -2.0*M_Total/R_Schw));
   	exp4phi_arr[1] = (r_Schw_arr[1]/rbar_arr[1])*(r_Schw_arr[1]/rbar_arr[1]);
   	exp4phi_arr[0] = exp4phi_arr[1];
-	//assume conformal factor is constant near core of star, to avoid divide by zero error. 
-	//placed here since it relies on values calculated in iteration 1. 
+	// Assume conformal factor is constant near core of star, to avoid divide by zero error. 
+	// Placed here since it relies on values calculated in iteration 1. 
 	fprintf(fp3, "%15.14e %15.14e %15.14e %15.14e\n",rbar_arr[0]*sqrt(exp4phi_arr[0]),rbar_arr[0],expnu_arr[0],exp4phi_arr[0]);
 	fprintf(fp3, "%15.14e %15.14e %15.14e %15.14e\n",rbar_arr[1]*sqrt(exp4phi_arr[1]),rbar_arr[1],expnu_arr[1],exp4phi_arr[1]);
-  for (int i = 2; i < which_line; i++) { //set zero values separately. 
+  for (int i = 2; i < which_line; i++) { // Set zero values separately. 
   	rbar_arr[i] = rbar_arr[i] * normalizer;
   	expnu_arr[i] = exp(expnu_arr[i] - NU_Edge + log(1 -2.0*M_Total/R_Schw));
   	exp4phi_arr[i] = (r_Schw_arr[i]/rbar_arr[i])*(r_Schw_arr[i]/rbar_arr[i]);
   	fprintf(fp3, "%15.14e %15.14e %15.14e %15.14e\n",rbar_arr[i]*sqrt(exp4phi_arr[i]),rbar_arr[i],expnu_arr[i],exp4phi_arr[i]);
   }
-  printf("Post processing data reported as radius, normalized polytropic radius, scaled lapse, scaled conformal factor^4\n");  
+  printf("Post processing data reported as radius, normalized isotropic radius, scaled square lapse, scaled conformal factor^4\n");  
   
   fclose(fp3);
   
@@ -146,7 +153,7 @@ static inline int bisection_idx_finder(const REAL rrbar, const int numlines_in_f
   REAL y1 = rrbar-rbar_arr[x1];
   REAL y2 = rrbar-rbar_arr[x2];
 	if (rrbar == 0) {
-		return 0; //Look, why would you want to interpolate to the center? It's the center! But if you want it you can have it, it's the 0 index. 
+		return 0; // Look, why would you want to interpolate to the center? It's the center! But if you want it you can have it, it's the 0 index. 
 	}
   if(y1*y2 >= 0) {
     fprintf(stderr,"INTERPOLATION BRACKETING ERROR %e | %e %e\n",rrbar,y1,y2);
@@ -165,7 +172,7 @@ static inline int bisection_idx_finder(const REAL rrbar, const int numlines_in_f
     if( abs(x2-x1) == 1 ) {
       // If rbar_arr[x1] is closer to rrbar than rbar_arr[x2] then return x1:
       if(fabs(rrbar-rbar_arr[x1]) < fabs(rrbar-rbar_arr[x2])) return x1;
-      // Otherwiser return x2:
+      // Otherwise return x2:
       return x2;
     }
   }
@@ -261,14 +268,14 @@ void TOV_interpolate_1D(REAL rrbar,const REAL Rbar,const int Rbar_idx,const int 
 //  gcc -Ofast tov_interp.c -o tov_interp -DSTANDALONE_UNIT_TEST
 // #ifdef STANDALONE_UNIT_TEST
 void interp_main(CCTK_ARGUMENTS) {
-
+  // ETK interface
   DECLARE_CCTK_ARGUMENTS
   DECLARE_CCTK_PARAMETERS
 
   // Open the data file:
   char filename[100];
-  sprintf(filename,"ooData.txt");
-  // sprintf(filename,"/home/gsteward/simulations/TOVTest/output-0000/ooData.txt");
+  sprintf(filename,TOVOdieGM_file_name);
+
   FILE *in1Dpolytrope = fopen(filename, "r");
   if (in1Dpolytrope == NULL) {
     fprintf(stderr,"ERROR: could not open file %s\n",filename);
@@ -300,13 +307,16 @@ void interp_main(CCTK_ARGUMENTS) {
   for(int i=1;i<numlines_in_file;i++) {
     if(rho_arr[i-1]>0 && rho_arr[i]==0) { Rbar = rbar_arr[i-1]; Rbar_idx = i-1; }
   }
+  
+  printf("Star's Final Isotropic Radius, Radius, and Mass: %15.14e %15.14e %15.14e \n", Rbar*1477.974, r_Schw_arr[Rbar_idx]*1477.974, M_arr[Rbar_idx]);
+  
   if(Rbar<0) {
     fprintf(stderr,"Error: could not find r=R from data file.\n");
     exit(1);
   }
-  
-  //GRID TEST 
 
+	// Here's the part where we actually place values on the
+	// ETK grid. 
   for(int i=0; i<cctk_lsh[0]; i++) {
 	for(int j=0; j<cctk_lsh[1]; j++)  {
 	    for(int k=0; k<cctk_lsh[2]; k++) {
@@ -314,48 +324,27 @@ void interp_main(CCTK_ARGUMENTS) {
 	    	
 		double radiusETK = sqrt( x[i3D]*x[i3D] + y[i3D]*y[i3D] + z[i3D]*z[i3D] );
 		REAL rho_e,rho_baryon,P,M,expnu,exp4phi;
-		// printf("%15.14e %15.14e %15.14e %15.14e %i %i %i \n", radiusETK, x[i3D], y[i3D], z[i3D], i, j, k);
 		TOV_interpolate_1D(radiusETK,Rbar,Rbar_idx,4,  numlines_in_file,r_Schw_arr,rho_arr,rho_baryon_arr,P_arr,M_arr,expnu_arr,exp4phi_arr,rbar_arr,  &rho_e,&rho_baryon,&P,&M,&expnu,&exp4phi);
-		// radius can be reclaimed by radiusETK*sqrt(exp4phi)
-		
-		// Now we need to fill the values in the cartesian grid for ADMBase, HydroBase, and 
-		// StaticConformal
-		
-		// We need to report: the metric, the lapse, the shift vector
-		// the baryon density, the pressure, the specific internal energy
-		// the conformal factor and its first and second derivatives. 
-		// So, modeling this off the original ETK TOVSolver from Loeffler and Hawke...
-		// Some of these values appear really unecessary.
-		
-		// First, the values we have calculated directly. 
+
 		rho[i3D] = rho_baryon;
-		//printf("%i %i %i %8.7e %8.7e %8.7e %15.14e %15.14e %15.14e \n", i, j, k, x[i3D], y[i3D], z[i3D], radiusETK, rho[i3D], rho_baryon);
 		press[i3D] = P;
-		
-		// There is never a shift vector. 
 		betax[i3D] = 0.0;
 		betay[i3D] = 0.0;
 		betaz[i3D] = 0.0;
-	
-		alp[i3D] = expnu; //Could be wrong, might need to be exp2nu. In that case square. 
-		
-		//and the ones with minor math. 
-		//psi[i3D] = sqrt(sqrt(exp4phi)); //Segmentation Fault? from psi not exp4phi. 
-		// printf("%15.14e\n",psi[1]); //Fault occurs simply from acessing as well.
-		// This value, from StaticConformal, is fortunately not necessary to actually plot so we ignore. 
-		eps[i3D] = (rho_e / (rho_baryon+1e-30)) - 1.0; //tiny number prevents 0/0. 
-		
+		alp[i3D] = pow(expnu,0.5); 
+		// Validated that this is the correct assignment, 
+		// as TOVSolver's values are comparable.
+		eps[i3D] = (rho_e / (rho_baryon+1e-30)) - 1.0; 
+		//tiny number prevents 0/0. 
 		gxx[i3D] = 1.0/(exp4phi+1e-30);
 		gyy[i3D] = gxx[i3D];
 		gzz[i3D] = gxx[i3D];
 		gxy[i3D] = 0.0;
 		gxz[i3D] = 0.0;
 		gyz[i3D] = 0.0;
-		
 		velx[i3D] = 0.0;
 		vely[i3D] = 0.0;
 		velz[i3D] = 0.0;
-		
 	        w_lorentz[i3D] = 1/sqrt(1.0-(
                           gxx[i3D] * velx[i3D] * velx[i3D]+
                           gyy[i3D] * vely[i3D] * vely[i3D]+
@@ -365,61 +354,9 @@ void interp_main(CCTK_ARGUMENTS) {
                         2*gyz[i3D] * vely[i3D] * velz[i3D])*
                         exp4phi);
                 // As the velocities are zero this reduces to 1.
-
-		
-		 
-		
 	    }	
 	}
   }
-
-//Post-processing, such as finding derivatives, which may or may not be necessary. 
-//Lifted directly from the original TOVSolver in ETK. 
-  /* 
-  if (*conformal_state > 1)
-    // go again over all 3D-grid points
-    for(int i=0; i<cctk_lsh[0]; i++)
-     for(int j=0; j<cctk_lsh[1]; j++)
-      for(int k=0; k<cctk_lsh[2]; k++)
-      {
-        int i3D=CCTK_GFINDEX3D(cctkGH, i, j, k);
-        psix[i3D]=(((i==0)?
-                    (psi[CCTK_GFINDEX3D(cctkGH, i+1, j, k)] -
-                     psi[CCTK_GFINDEX3D(cctkGH, i  , j, k)]):
-                   (i==(cctk_lsh[0]-1))?
-                    (psi[CCTK_GFINDEX3D(cctkGH, i  , j, k)] -
-                     psi[CCTK_GFINDEX3D(cctkGH, i-1, j, k)]):
-                0.5*(psi[CCTK_GFINDEX3D(cctkGH, i+1, j, k)] -
-                     psi[CCTK_GFINDEX3D(cctkGH, i-1, j, k)])));
-        psix[i3D] = DIFF_X(psi);
-        psiy[i3D] = DIFF_Y(psi);
-        psiz[i3D] = DIFF_Z(psi);
-      }
-  if (*conformal_state > 2)
-    // go again over all 3D-grid points 
-    for(int i=0; i<cctk_lsh[0]; i++)
-     for(int j=0; j<cctk_lsh[1]; j++)
-      for(int k=0; k<cctk_lsh[2]; k++)
-      {
-        int i3D=CCTK_GFINDEX3D(cctkGH, i, j, k);
-        psixx[i3D] = DIFF_X(psix)/psi[i3D];
-        psiyy[i3D] = DIFF_Y(psiy)/psi[i3D];
-        psizz[i3D] = DIFF_Z(psiz)/psi[i3D];
-        psixy[i3D] = DIFF_X(psiy)/psi[i3D];
-        psiyz[i3D] = DIFF_Y(psiz)/psi[i3D];
-        psixz[i3D] = DIFF_Z(psix)/psi[i3D];
-      }
-  if (*conformal_state > 1)
-    // go again over all 3D-grid points 
-    for(int i=0; i<cctk_lsh[0]; i++)
-     for(int j=0; j<cctk_lsh[1]; j++)
-      for(int k=0; k<cctk_lsh[2]; k++)
-      {
-        int i3D=CCTK_GFINDEX3D(cctkGH, i, j, k);
-        psix[i3D] /= psi[i3D];
-        psiy[i3D] /= psi[i3D];
-        psiz[i3D] /= psi[i3D];
-      }*/
   int i3D = cctk_lsh[2]*cctk_lsh[1]*cctk_lsh[0];
   switch(TOV_Populate_Timelevels)
   {
@@ -459,30 +396,7 @@ void interp_main(CCTK_ARGUMENTS) {
                    (int)TOV_Populate_Timelevels);
         break;
   }
-  //GRID TEST END
 
-  // Next, interpolate!
-  /*FILE *fp3;
-  fp3 = fopen("oooData.txt","w");
-  // Create trial radius array:
-  int num_r_pts = 1000;
-  //REAL *r_out_arr = (REAL *)malloc(sizeof(REAL)*num_r_pts);
-  // struct drand48_data randBuffer;
-  // srand48_r(1313, &randBuffer);
-#pragma omp parallel for
-  for(int i=1;i<num_r_pts;i++) {
-  // starting i at 1 since we really shouldn't interpolate at r=0. 
-  // printf("%i %i\n",i,num_r_pts);
-    REAL rrbar;
-    // drand48_r(&randBuffer,&rrbar);
-    //rrbar *= 10.; //rbar_arr[numlines_in_file-1];
-    rrbar = rbar_arr[numlines_in_file-2]*((double)i/(double)num_r_pts);
-    //rrbar = rbar_arr[numlines_in_file-2];
-    REAL rho,rho_baryon,P,M,expnu,exp4phi;
-    TOV_interpolate_1D(rrbar,Rbar,Rbar_idx,4,  numlines_in_file,r_Schw_arr,rho_arr,rho_baryon_arr,P_arr,M_arr,expnu_arr,exp4phi_arr,rbar_arr,  &rho,&rho_baryon,&P,&M,&expnu,&exp4phi);
-    fprintf(fp3, "%15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e %15.14e\n",rrbar,rho,rho_baryon,P,M,expnu,exp4phi,rrbar*sqrt(exp4phi));
-    // the last printed term here reclaims the value of the original radius r. Generally not needed but useful for comparisons. 
-  }*/
   printf("Interpolation Successful!\n");
 
   // Free the malloc()'s!
@@ -494,7 +408,11 @@ void interp_main(CCTK_ARGUMENTS) {
   free(expnu_arr);
   free(exp4phi_arr);
   free(rbar_arr);
-
+  
+  printf("Freeing Successful!\n");
+  // This is here to make sure we have actually reached the absolute
+  // end of the file. 
+  
   // return 0;
 }
 // #endif

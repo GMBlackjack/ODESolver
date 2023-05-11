@@ -12,6 +12,13 @@
 // Note that it does not depend on any of the other files--so long as the formatting is maintained
 // the operation of the code should be agnostic to what the user puts in here. 
 
+    // Global variables for C++ interaction. 
+    double *logrho;
+    double *logpres;
+    double *logeps;
+    int array_size;
+
+
 // This struct here holds any constant parameters we may wish to report.
 // Often this struct can be entirely empty if the system of equations is self-contained.
 // But if we had a system that relied on an Equation of State, 
@@ -51,7 +58,7 @@ void exception_handler (double x, double y[])
     // This funciton might be empty. It's only used if the user wants to hard code some limitations 
     // on some varaibles.
     // Good for avoding some divide by zero errors, or going negative in a square root. 
-    if (y[0] < 0) {
+    if (y[0] < 1e-20) {
         y[0] = 0;
     }
     // In this case, the TOV Equations, we need to make sure the pressure doesn't go negative.
@@ -81,8 +88,49 @@ void const_eval (double x, const double y[], struct constant_parameters *params)
     // but do not have derivative forms.
     // Today, we do that for the total energy density. 
     // params->rho = sqrt(y[0]) + y[0];
-    params->rho = pow(y[0] / TOVOdieGM_K , 1.0 / TOVOdieGM_Gamma) + y[0] / (TOVOdieGM_Gamma - 1.0);
-    // The total energy density only depends on pressure. 
+    if (TOVOdieGM_use_EOS_table == false) {
+    	params->rho = pow(y[0] / TOVOdieGM_K , 1.0 / TOVOdieGM_Gamma) + y[0] / (TOVOdieGM_Gamma - 1.0);
+    } else if (y[0] == 0) {
+    	params->rho = 0.0;
+    } else {
+	// Here is where we end up if we're using a tabulated EOS. 
+    	int pressureIndex = -1;
+    	double log_pres_checker = log(y[0]);
+    	
+    	//First, find the range that contains our pressure.
+    	for (int i = 1 ; i < array_size-1; i++) {
+    		if ( (logpres[i] < log_pres_checker && log_pres_checker < logpres[i+1]) || (logpres[i+1] < log_pres_checker && log_pres_checker < logpres[i])  ) {
+    			pressureIndex = i;
+    			i = array_size-1;
+    		} 
+    	}
+    	
+    	if (pressureIndex == -1) {
+    	// This is where we are if we aren't on the table. 
+    		printf("WARNING: You are outside the bounds of the table (pressure)! Using an edge value but no promises it'll be any good!\n");
+    		if (log_pres_checker < logpres[0]) {
+    			params->rho = exp(logrho[0]) * (exp(logeps[0]) + 1.0);
+    		} else {
+     			params->rho = exp(logrho[array_size-1]) * (exp(logeps[array_size-1]) + 1.0);   		
+    		}
+    	}
+    	
+    	// Once we've found the closest point, we need to linearly interpolate the result to where we actually are. 
+    	// Which direction we interpolate depends entirely on which side the pressure is from the closest pressure. 
+    	// We interpolate the log values to get the least error.
+    	else if (log_pres_checker > logpres[pressureIndex]) {
+    		double linear_interp_scale = (log_pres_checker - logpres[pressureIndex])/(logpres[pressureIndex+1] - logpres[pressureIndex]);
+    		double new_rho = logrho[pressureIndex] + linear_interp_scale*(logrho[pressureIndex+1] - logrho[pressureIndex]);
+    		double new_eps = logeps[pressureIndex] + linear_interp_scale*(logeps[pressureIndex+1] - logeps[pressureIndex]);
+    		params->rho = exp(new_rho) * (exp(new_eps) + 1.0); // unlogarithmicify it. Totally a word. Yep. 
+
+    	} else {
+    		double linear_interp_scale = (logpres[pressureIndex] - log_pres_checker)/(logpres[pressureIndex] - logpres[pressureIndex+1]);
+    		double new_rho = logrho[pressureIndex] - linear_interp_scale*(logrho[pressureIndex] - logrho[pressureIndex-1]);
+    		double new_eps = logeps[pressureIndex] - linear_interp_scale*(logeps[pressureIndex] - logeps[pressureIndex-1]);  		
+    		params->rho = exp(new_rho) * (exp(new_eps) + 1.0);
+    	}
+    }
 }
 
 int diffy_Q_eval (double x, double y[], double dydx[], void *params)
@@ -122,7 +170,7 @@ int diffy_Q_eval (double x, double y[], double dydx[], void *params)
     }
     // This funciton is not guaranteed to work in all cases. For instance, we have manually 
     // made an exception for x=0, since evaluating at 0 produces infinities and NaNs. 
-    // Be sure to declare any exceptions before running, both here and in exception_handler, 
+    // Be sure to declare any exceptions before runnpresing, both here and in exception_handler, 
     // depending on the kind of exception desired.  
 
     return 0;
@@ -148,7 +196,42 @@ void get_initial_condition (double y[])
 {
     DECLARE_CCTK_PARAMETERS
     // be sure to have these MATCH the equations in diffy_Q_eval
-    y[0] = TOVOdieGM_K*pow(TOVOdieGM_central_baryon_density,TOVOdieGM_Gamma); // Pressure, can be calcualated from central baryon density. 
+    if (TOVOdieGM_use_EOS_table == false) {
+    	y[0] = TOVOdieGM_K*pow(TOVOdieGM_central_baryon_density,TOVOdieGM_Gamma); // Pressure, can be calcualated from central baryon density.
+    } else {
+    // If using a table, initial pressure is a bit different. 
+    // First, find the index range that matches our baryon density 
+    	    	
+    	int rhoIndex = -1;
+    	double log_baryon_density = log(TOVOdieGM_central_baryon_density);
+    	for (int i = 1 ; i < array_size-1; i++) {
+    		if ( (logrho[i] < log_baryon_density && log_baryon_density < logrho[i+1]) || (logrho[i+1] < log_baryon_density && log_baryon_density < logrho[i])  ) {
+    			rhoIndex = i;
+    			i = array_size-1;
+    		} 
+    	}
+    	
+    	if (rhoIndex == -1) {
+    		// We end up here if outside bounds of the table. 
+    		printf("WARNING: You are outside the bounds of the table (baryon density)! Using an edge value but no promises it'll be any good!\n");
+    		if (log_baryon_density < logrho[0]) {
+    			y[0] = exp(logpres[0]);
+    		} else {
+     			y[0] = exp(logpres[array_size-1]);   		
+    		}
+    	}
+    	
+    	// Then linearly interpolate to assign the pressure
+    	// that corresponds to the baryon density. 
+    	// Interpolate the log values to minimize error. 
+    	else if (log_baryon_density > logrho[rhoIndex]) {
+    		double linear_interp_scale = (log_baryon_density - logrho[rhoIndex])/(logrho[rhoIndex+1] - logrho[rhoIndex]);
+    		y[0] = exp(logpres[rhoIndex] + linear_interp_scale*(logpres[rhoIndex+1] - logpres[rhoIndex]));
+    	} else {
+    		double linear_interp_scale = (logrho[rhoIndex] - log_baryon_density)/(logrho[rhoIndex] - logrho[rhoIndex+1]);
+    		y[0] = exp(logpres[rhoIndex] - linear_interp_scale*(logpres[rhoIndex] - logpres[rhoIndex-1]));
+    	}
+    } 
     y[1] = 0.0; // nu
     y[2] = 0.0; // mass
     y[3] = 0.0; // r-bar

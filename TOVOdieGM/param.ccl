@@ -15,8 +15,12 @@ CCTK_REAL TOVOdieGM_outer_radius_limit "Condition on terminating evolution at a 
   0.0:* :: "Must be positive"
 } 1e6
 
+CCTK_REAL TOVOdieGM_T_initial "Initial temperature."
+{
+  0.0:* :: "Must be positive"
+} 0.01
 
-KEYWORD TOVOdieGM_step_type "What type of method are we using? (using int codes since C doesn't like strings)"
+KEYWORD TOVOdieGM_step_type "What type of method are we using?"
 {
   "Euler" :: "Euler's Method."
   "RK2H" :: "Second Order Runge-Kutta Heun."
@@ -42,7 +46,7 @@ KEYWORD TOVOdieGM_step_type "What type of method are we using? (using int codes 
   "AB" :: "Adams-Bashforth (Not an RK-type method)."
 } "RK4"
 
-KEYWORD TOVOdieGM_step_type_2 "What type of method are we using? (using int codes since C doesn't like strings)"
+KEYWORD TOVOdieGM_step_type_2 "What type of method are we using? (This keyword only used if original keyword is AB. If this is not also AB, we activate a hybrid method that starts as an RK method and transfers to AB once we have enough data.)"
 {
   "Euler" :: "Euler's Method."
   "RK2H" :: "Second Order Runge-Kutta Heun."
@@ -103,11 +107,20 @@ STRING TOVOdieGM_file_name "What file "
   ".*" :: "Any filename."
 } "ooData.txt"
 
+STRING TOVOdieGM_file_name_adjusted "What file (for adjusted data)"
+{
+  ".*" :: "Any filename."
+} "oooData.txt"
+
 BOOLEAN TOVOdieGM_no_adaptive_step "Enable if we want to force uniform time steps/disable adaptive timestep."
 {
 } "no"
 
 BOOLEAN TOVOdieGM_report_error_estimates "Enable to report estimated errors, if they exist.."
+{
+} "no"
+
+BOOLEAN TOVOdieGM_use_EOS_table "Enable to use an EOS table via EOS_Omni."
 {
 } "no"
 
@@ -170,24 +183,24 @@ shares:HydroBase
 
 EXTENDS KEYWORD initial_hydro ""
 {
-  "tov" :: "TOV star initial hydrobase variables"
+  "TOVOdieGM" :: "TOV star initial hydrobase variables"
 }
 
 shares:admbase
 
 EXTENDS KEYWORD initial_data
 {
-  "tov" :: "TOV star initial metric"
+  "TOVOdieGM" :: "TOV star initial metric"
 }
 
 EXTENDS KEYWORD initial_lapse
 {
-  "tov" :: "TOV star initial lapse; isotropic"
+  "TOVOdieGM" :: "TOV star initial lapse; isotropic"
 }
 
 EXTENDS KEYWORD initial_shift
 {
-  "tov" :: "TOV star initial shift"
+  "TOVOdieGM" :: "TOV star initial shift"
 }
 
 USES KEYWORD metric_type
