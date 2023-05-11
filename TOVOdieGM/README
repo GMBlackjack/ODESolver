@@ -21,7 +21,7 @@ Some important parameters:
 
 `TOVOdieGM_size` determines how large of an area the solution covers, specifically it's the maximum number of steps that are allowed to be taken so the program never gets stuck forever. The program will usually exit prior to this once it hits its exit condition of r=1e6, but this can be adjusted by changing `TOVOdieGM_outer_radius_limit`.
 
-`TOVOdieGM_no_adaptive_step` set this to "yes" to enforce uniform step sizes. 
+`TOVOdieGM_no_adaptive_step` set this to "yes" to enforce uniform step sizes. This is not recommended as this will make the solution outside the star slow to a crawl when it really isn't needed. 
 
 `TOVOdieGM_report_error_estimates` prints more data to the initial data file, specifically error estimates for each step for the four primary quantities that are integrated over initial data. 
 
@@ -32,6 +32,8 @@ Some important parameters:
 `TOVOdieGM_step_type` and `TOVOdieGM_step_type_2` are how you access the many different ODE solving methods we have on file. We have a lot ranging in order from first to eighth, some are adaptive, others are not, and while most are Runge-Kutta style methods we also have an Adams-Bashforth solver. The `type_2` parameter is only used if the other parameter is set to Adams-Bashforth, in which case `type_2` initially solves the TOV Equations with the method in `type_2` but switches to Adams-Bashforth once enough data has been collected. When using Adams-Bashforth be sure to set the order with `TOVOdieGM_adams_bashforth_order`. It supports up to order 19, but this is not recommended as this tends to cause unpredictable and chaotic behavior. 4th or 5th order tends to be the best, but it's usually stable up to 9th. 
 
 To see what types of methods are on offer, please see the param.ccl file, which shows a Keyword list with all the methods present.
+
+'TOVOdieGM_absolute_min_step` and `TOVOdieGM_absolute_max_step` set the minimum and maximum step sizes, respectively. Since evolving outside the star needs to be done to large distances, we have the max step size set rather large by default to allow speedy solving for the star's exterior.
 
 If using a table, you can provide `TOVOdieGM_T_initial.` By default this is 0.01, and is only used when a Tabulated EOS is available. 
 

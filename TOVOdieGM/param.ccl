@@ -157,7 +157,7 @@ CCTK_REAL TOVOdieGM_min_step_adjustment "Minimum adjustment in a single step."
 CCTK_REAL TOVOdieGM_absolute_max_step "Biggest possible step size."
 {
   0.0:* :: "Must be positive"
-} 1.0
+} 10000
 
 CCTK_REAL TOVOdieGM_absolute_min_step "Smallest possible step size"
 {
