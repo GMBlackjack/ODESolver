@@ -1,4 +1,8 @@
+
 #include "nrpy_odiegm_proto.c"
+    
+
+// #include "nrpy_odiegm_proto.c"
 
 // This file contains the actual definitions for the funcitons outlined in nrpy_odiegm_proto.c
 
@@ -753,3 +757,4 @@ int nrpy_odiegm_driver_apply_fixed_step (nrpy_odiegm_driver * d, double *t,
 
     return 0;
 }
+

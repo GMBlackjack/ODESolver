@@ -1,4 +1,8 @@
+
 #include "nrpy_odiegm.h"
+    
+
+// #include "nrpy_odiegm.h"
 
 // This file contains all the function prototypes that would usually be in the header.
 // However, we split them off so the struct "objects" would occupy different files. 
@@ -45,3 +49,4 @@ int nrpy_odiegm_driver_apply_fixed_step (nrpy_odiegm_driver * d, double *t,
                                         const double h,
                                         const unsigned long int n,
                                         double y[]);
+

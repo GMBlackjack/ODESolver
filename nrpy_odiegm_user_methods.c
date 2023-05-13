@@ -1,3 +1,5 @@
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -153,3 +155,5 @@ void assign_constants (double c[], struct constant_parameters *params)
     c[0] = params->rho; // Total energy density. 
     // Add more as required. 
 }
+
+    

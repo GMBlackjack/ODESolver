@@ -1,5 +1,6 @@
-#include "nrpy_odiegm_funcs.c" // nrpy_odiegm itself.
-#include "nrpy_odiegm_user_methods.c" // User-dependent functions. 
+
+#include "nrpy_odiegm_funcs.c" //nrpy_odiegm itself.
+#include "nrpy_odiegm_user_methods.c" //user-dependent functions. 
 
 // This file is technically not part of Odie, it is just an example implementation.
 // However, it is exceptionally versatile, and can be used to run virtually 
@@ -10,6 +11,8 @@
 
 int main()
 {
+    
+
     printf("Beginning ODE Solver \"Odie\" V10...\n");
 
     // SECTION I: Preliminaries
@@ -19,7 +22,7 @@ int main()
     // The system of differential equations can be found declared in diffy_Q_eval
     // in nrpy_odiegm_user_methods.c
 
-    double step = 0.0001; // the "step" value. Initial step if using an adaptive method.
+    double step = 0.00001; // the "step" value. Initial step if using an adaptive method.
     double current_position = 0.0; // where the boundary/initial condition is. 
     // Same for every equation in the system.
     int number_of_equations = 4; // How many equations are in our system?
@@ -34,7 +37,7 @@ int main()
     // without using GSL's awkward setup. False by default. 
 
     bool report_error_actual = false;
-    bool report_error_estimates = true;
+    bool report_error_estimates = false;
     // AB methods do not report error estimates. 
     // BE WARNED: setting reporError (either kind) to true makes
     // it print out all error data on another line,
@@ -51,16 +54,18 @@ int main()
 
     // Now we set up the method. 
     const nrpy_odiegm_step_type * step_type;
-    step_type = nrpy_odiegm_step_RK4;
+    step_type = nrpy_odiegm_step_AB;
     // Here is where the method is actually set, by specific name since that's what GSL does. 
 
     const nrpy_odiegm_step_type * step_type_2;
-    step_type_2 = nrpy_odiegm_step_RK4;
+    step_type_2 = nrpy_odiegm_step_AB;
     // This is a second step type "object" (struct) for hybridizing. 
     // Only used if the original type is AB.
     // Set to AB to use pure AB method. 
 
     // AFTER THIS POINT THERE SHOULD BE NO NEED FOR USER INPUT, THE CODE SHOULD HANDLE ITSELF. 
+
+    
 
     // We need to define a struct that can hold all possible constants. 
     struct constant_parameters cp; 
@@ -125,10 +130,6 @@ int main()
     printf("Printing to file '%s'.\n",file_name);
 
     // Open the file we'll be writing data to. 
-    // Before continuing, let's print out our initial data. 
-    // The print function is automatically adaptable to any size of data. 
-    // We print both to the terminal and to the file for the initial conditions, 
-    // but later only print to the file.
 
     // First, print the location we are at. 
     printf("INITIAL: Position:,\t%f,\t",current_position);
@@ -299,7 +300,5 @@ int main()
 
     printf("ODE Solver \"Odie\" V10 Shutting Down...\n");
     return 0;
-
-}
-
-// - GM, master of dogs.
+    
+} // -GM, master of dogs
